@@ -27,12 +27,6 @@ Thumbs.db
 *.log
 npm-debug.log*
 
-# Blockchain artifacts (generated)
-blockchain/network/organizations/fabric-ca/
-blockchain/network/organizations/peerOrganizations/
-blockchain/network/organizations/ordererOrganizations/
-blockchain/network/channel-artifacts/
-blockchain/network/system-genesis-block/
 
 # Chaincode packages
 *.tar.gz
