@@ -1,0 +1,179 @@
+/* Header Component Styles */
+
+.header {
+  height: 64px;
+  background: linear-gradient(90deg, #0f0f1a 0%, #1a1a2e 50%, #0f0f1a 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: relative;
+  z-index: 100;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 212, 255, 0.5),
+    transparent
+  );
+}
+
+/* Logo */
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  color: #00d4ff;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.logo-subtitle {
+  font-size: 10px;
+  color: #606060;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Organization Switcher */
+.header-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.org-switcher {
+  display: flex;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.org-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  color: #808080;
+}
+
+.org-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.org-btn.active {
+  color: #fff;
+}
+
+.org-btn.medical.active {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.3), rgba(255, 107, 107, 0.1));
+  box-shadow: 0 0 20px rgba(255, 107, 107, 0.2);
+}
+
+.org-btn.medical.active svg {
+  color: #ff6b6b;
+}
+
+.org-btn.police.active {
+  background: linear-gradient(135deg, rgba(77, 171, 247, 0.3), rgba(77, 171, 247, 0.1));
+  box-shadow: 0 0 20px rgba(77, 171, 247, 0.2);
+}
+
+.org-btn.police.active svg {
+  color: #4dabf7;
+}
+
+/* Status Indicators */
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.status-indicators {
+  display: flex;
+  gap: 16px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.status-item.connected {
+  color: #51cf66;
+  background: rgba(81, 207, 102, 0.1);
+}
+
+.status-item.connected svg {
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.status-item.disconnected {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+

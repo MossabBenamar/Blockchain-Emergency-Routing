@@ -1,0 +1,409 @@
+/* Sidebar Component Styles */
+
+.sidebar {
+  width: 320px;
+  height: 100%;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 8px;
+  padding: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refresh-btn .spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Sidebar Sections */
+.sidebar-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a0a0a0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+.stat-card.free { border-left: 3px solid #51cf66; }
+.stat-card.reserved { border-left: 3px solid #ffd43b; }
+.stat-card.occupied { border-left: 3px solid #ff4757; }
+.stat-card.total { border-left: 3px solid #4dabf7; }
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #808080;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* Progress Bar */
+.progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  display: flex;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.progress.free { background: #51cf66; }
+.progress.reserved { background: #ffd43b; }
+.progress.occupied { background: #ff4757; }
+
+/* Segment Details */
+.segment-details {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.segment-id {
+  font-size: 24px;
+  font-weight: 700;
+  color: #00d4ff;
+  margin-bottom: 12px;
+}
+
+.segment-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.segment-info:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #808080;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.free {
+  background: rgba(81, 207, 102, 0.2);
+  color: #51cf66;
+}
+
+.status-badge.reserved {
+  background: rgba(255, 212, 59, 0.2);
+  color: #ffd43b;
+}
+
+.status-badge.occupied {
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
+}
+
+/* Org Badge */
+.org-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.org-badge.medical {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff6b6b;
+}
+
+.org-badge.police {
+  background: rgba(77, 171, 247, 0.2);
+  color: #4dabf7;
+}
+
+/* Action Form */
+.action-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-form label {
+  font-size: 12px;
+  color: #808080;
+}
+
+.vehicle-select {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.vehicle-select option {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* Action Buttons */
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn.reserve {
+  background: linear-gradient(135deg, #ffd43b, #fab005);
+  color: #1a1a2e;
+}
+
+.action-btn.reserve:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 212, 59, 0.4);
+}
+
+.action-btn.release {
+  background: linear-gradient(135deg, #51cf66, #40c057);
+  color: #1a1a2e;
+}
+
+.action-btn.release:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(81, 207, 102, 0.4);
+}
+
+/* Warning Message */
+.warning-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px solid rgba(255, 71, 87, 0.3);
+  border-radius: 8px;
+  color: #ff6b6b;
+  font-size: 12px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px;
+  color: #606060;
+  text-align: center;
+}
+
+.empty-state span {
+  font-size: 12px;
+}
+
+/* Vehicle List */
+.vehicle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vehicle-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid transparent;
+}
+
+.vehicle-item.medical {
+  border-left-color: #ff6b6b;
+}
+
+.vehicle-item.police {
+  border-left-color: #4dabf7;
+}
+
+.vehicle-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #fff;
+}
+
+.vehicle-details {
+  flex: 1;
+}
+
+.vehicle-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.vehicle-type {
+  font-size: 11px;
+  color: #808080;
+  text-transform: capitalize;
+}
+
+.vehicle-status {
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.vehicle-status.active {
+  background: rgba(81, 207, 102, 0.2);
+  color: #51cf66;
+}
+
+.vehicle-status.on_mission {
+  background: rgba(255, 212, 59, 0.2);
+  color: #ffd43b;
+}
+
+.vehicle-status.inactive {
+  background: rgba(128, 128, 128, 0.2);
+  color: #808080;
+}
+
+/* Legend */
+.sidebar-section.legend {
+  margin-top: auto;
+}
+
+.legend-items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #a0a0a0;
+}
+
+.legend-color {
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.legend-color.free { background: #51cf66; }
+.legend-color.reserved-medical { background: #ff6b6b; }
+.legend-color.reserved-police { background: #4dabf7; }
+.legend-color.occupied { background: #ff4757; }
+

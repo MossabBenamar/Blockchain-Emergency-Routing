@@ -1,0 +1,349 @@
+/* SimulationControls.css - Phase 5 Styling */
+
+.simulation-controls {
+  background: linear-gradient(135deg, rgba(20, 20, 40, 0.95), rgba(30, 30, 60, 0.95));
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.controls-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.status-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-stopped {
+  background: rgba(134, 142, 150, 0.3);
+  color: #adb5bd;
+  border: 1px solid rgba(134, 142, 150, 0.5);
+}
+
+.status-paused {
+  background: rgba(255, 212, 59, 0.2);
+  color: #ffd43b;
+  border: 1px solid rgba(255, 212, 59, 0.4);
+}
+
+.status-running {
+  background: rgba(81, 207, 102, 0.2);
+  color: #51cf66;
+  border: 1px solid rgba(81, 207, 102, 0.4);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(81, 207, 102, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(81, 207, 102, 0); }
+}
+
+/* Stats */
+.controls-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #868e96;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Control Buttons */
+.controls-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.control-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.start-btn, .resume-btn {
+  background: linear-gradient(135deg, #51cf66, #40c057);
+  color: #fff;
+}
+
+.start-btn:hover:not(:disabled), .resume-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(81, 207, 102, 0.4);
+}
+
+.pause-btn {
+  background: linear-gradient(135deg, #ffd43b, #fab005);
+  color: #1a1a2e;
+}
+
+.pause-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 212, 59, 0.4);
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #ff6b6b, #fa5252);
+  color: #fff;
+}
+
+.stop-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+}
+
+.reload-btn {
+  background: linear-gradient(135deg, #4dabf7, #339af0);
+  color: #fff;
+  flex: 0 0 auto;
+  width: 48px;
+}
+
+.reload-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(77, 171, 247, 0.4);
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Speed Controls */
+.speed-controls {
+  margin-bottom: 20px;
+}
+
+.speed-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #868e96;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.speed-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.speed-btn {
+  flex: 1;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #adb5bd;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.speed-btn:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}
+
+.speed-btn.active {
+  background: rgba(0, 212, 255, 0.2);
+  border-color: #00d4ff;
+  color: #00d4ff;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+.speed-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Vehicle List */
+.vehicle-list {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 15px;
+}
+
+.vehicle-list h4 {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.vehicles-scroll {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vehicle-item {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.vehicle-item.current-org {
+  border-color: rgba(0, 212, 255, 0.2);
+}
+
+.vehicle-item.other-org {
+  opacity: 0.6;
+}
+
+.vehicle-item.moving {
+  border-color: rgba(81, 207, 102, 0.3);
+  background: rgba(81, 207, 102, 0.05);
+}
+
+.vehicle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vehicle-id {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.vehicle-id.org-medical {
+  color: #ff6b6b;
+}
+
+.vehicle-id.org-police {
+  color: #4dabf7;
+}
+
+.vehicle-status {
+  font-size: 1rem;
+}
+
+.vehicle-progress-info {
+  font-size: 0.75rem;
+  color: #868e96;
+}
+
+.segment-info {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.progress-bar-container {
+  height: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.2s linear;
+}
+
+.progress-bar.org-medical {
+  background: linear-gradient(90deg, #ff6b6b, #fa5252);
+}
+
+.progress-bar.org-police {
+  background: linear-gradient(90deg, #4dabf7, #339af0);
+}
+
+/* No Vehicles State */
+.no-vehicles {
+  text-align: center;
+  padding: 20px;
+  color: #868e96;
+}
+
+.no-vehicles span {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.no-vehicles small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+/* Scrollbar Styling */
+.vehicles-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.vehicles-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.vehicles-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.3);
+  border-radius: 3px;
+}
+
+.vehicles-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.5);
+}
+

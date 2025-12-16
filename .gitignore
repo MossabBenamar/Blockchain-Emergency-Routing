@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+*.exe
+*.out
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Blockchain artifacts (generated)
+blockchain/network/organizations/fabric-ca/
+blockchain/network/organizations/peerOrganizations/
+blockchain/network/organizations/ordererOrganizations/
+blockchain/network/channel-artifacts/
+blockchain/network/system-genesis-block/
+
+# Chaincode packages
+*.tar.gz
+
+# Wallet credentials
+wallet/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Test coverage
+coverage/
+
+# TypeScript build info
+*.tsbuildinfo

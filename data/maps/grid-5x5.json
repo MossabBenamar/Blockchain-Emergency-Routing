@@ -1,0 +1,97 @@
+{
+  "name": "Emergency Routing 5x5 Grid",
+  "description": "Synthetic 5x5 grid map for emergency vehicle routing simulation",
+  "version": "1.0",
+  "gridSize": {
+    "rows": 5,
+    "cols": 5
+  },
+  "nodes": [
+    {"id": "N1", "x": 0, "y": 0, "label": "Hospital", "type": "poi", "orgType": "medical"},
+    {"id": "N2", "x": 1, "y": 0, "label": null, "type": "intersection"},
+    {"id": "N3", "x": 2, "y": 0, "label": null, "type": "intersection"},
+    {"id": "N4", "x": 3, "y": 0, "label": null, "type": "intersection"},
+    {"id": "N5", "x": 4, "y": 0, "label": null, "type": "intersection"},
+    
+    {"id": "N6", "x": 0, "y": 1, "label": null, "type": "intersection"},
+    {"id": "N7", "x": 1, "y": 1, "label": null, "type": "intersection"},
+    {"id": "N8", "x": 2, "y": 1, "label": null, "type": "intersection"},
+    {"id": "N9", "x": 3, "y": 1, "label": null, "type": "intersection"},
+    {"id": "N10", "x": 4, "y": 1, "label": null, "type": "intersection"},
+    
+    {"id": "N11", "x": 0, "y": 2, "label": null, "type": "intersection"},
+    {"id": "N12", "x": 1, "y": 2, "label": null, "type": "intersection"},
+    {"id": "N13", "x": 2, "y": 2, "label": "Central Hub", "type": "poi"},
+    {"id": "N14", "x": 3, "y": 2, "label": null, "type": "intersection"},
+    {"id": "N15", "x": 4, "y": 2, "label": null, "type": "intersection"},
+    
+    {"id": "N16", "x": 0, "y": 3, "label": null, "type": "intersection"},
+    {"id": "N17", "x": 1, "y": 3, "label": null, "type": "intersection"},
+    {"id": "N18", "x": 2, "y": 3, "label": null, "type": "intersection"},
+    {"id": "N19", "x": 3, "y": 3, "label": null, "type": "intersection"},
+    {"id": "N20", "x": 4, "y": 3, "label": null, "type": "intersection"},
+    
+    {"id": "N21", "x": 0, "y": 4, "label": null, "type": "intersection"},
+    {"id": "N22", "x": 1, "y": 4, "label": null, "type": "intersection"},
+    {"id": "N23", "x": 2, "y": 4, "label": null, "type": "intersection"},
+    {"id": "N24", "x": 3, "y": 4, "label": null, "type": "intersection"},
+    {"id": "N25", "x": 4, "y": 4, "label": "Police Station", "type": "poi", "orgType": "police"}
+  ],
+  "segments": [
+    {"id": "S1", "from": "N1", "to": "N2", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S2", "from": "N2", "to": "N3", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S3", "from": "N3", "to": "N4", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S4", "from": "N4", "to": "N5", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    
+    {"id": "S5", "from": "N6", "to": "N7", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S6", "from": "N7", "to": "N8", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S7", "from": "N8", "to": "N9", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S8", "from": "N9", "to": "N10", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    
+    {"id": "S9", "from": "N11", "to": "N12", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S10", "from": "N12", "to": "N13", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S11", "from": "N13", "to": "N14", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S12", "from": "N14", "to": "N15", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    
+    {"id": "S13", "from": "N16", "to": "N17", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S14", "from": "N17", "to": "N18", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S15", "from": "N18", "to": "N19", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S16", "from": "N19", "to": "N20", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    
+    {"id": "S17", "from": "N21", "to": "N22", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S18", "from": "N22", "to": "N23", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S19", "from": "N23", "to": "N24", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    {"id": "S20", "from": "N24", "to": "N25", "weight": 1, "direction": "horizontal", "bidirectional": true},
+    
+    {"id": "S21", "from": "N1", "to": "N6", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S22", "from": "N6", "to": "N11", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S23", "from": "N11", "to": "N16", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S24", "from": "N16", "to": "N21", "weight": 1, "direction": "vertical", "bidirectional": true},
+    
+    {"id": "S25", "from": "N2", "to": "N7", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S26", "from": "N7", "to": "N12", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S27", "from": "N12", "to": "N17", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S28", "from": "N17", "to": "N22", "weight": 1, "direction": "vertical", "bidirectional": true},
+    
+    {"id": "S29", "from": "N3", "to": "N8", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S30", "from": "N8", "to": "N13", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S31", "from": "N13", "to": "N18", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S32", "from": "N18", "to": "N23", "weight": 1, "direction": "vertical", "bidirectional": true},
+    
+    {"id": "S33", "from": "N4", "to": "N9", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S34", "from": "N9", "to": "N14", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S35", "from": "N14", "to": "N19", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S36", "from": "N19", "to": "N24", "weight": 1, "direction": "vertical", "bidirectional": true},
+    
+    {"id": "S37", "from": "N5", "to": "N10", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S38", "from": "N10", "to": "N15", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S39", "from": "N15", "to": "N20", "weight": 1, "direction": "vertical", "bidirectional": true},
+    {"id": "S40", "from": "N20", "to": "N25", "weight": 1, "direction": "vertical", "bidirectional": true}
+  ],
+  "pointsOfInterest": [
+    {"nodeId": "N1", "name": "City Hospital", "type": "hospital", "orgType": "medical"},
+    {"nodeId": "N25", "name": "Central Police Station", "type": "police_station", "orgType": "police"},
+    {"nodeId": "N13", "name": "City Center", "type": "landmark"}
+  ]
+}
+

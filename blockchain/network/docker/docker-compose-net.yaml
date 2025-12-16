@@ -1,0 +1,218 @@
+# Emergency Routing System - Network Components
+# Peers, Orderer, CouchDB
+
+networks:
+  fabric:
+    name: emergency-routing_fabric
+
+volumes:
+  orderer.emergency.net:
+  peer0.medical.emergency.net:
+  peer0.police.emergency.net:
+
+services:
+  # ============================================================
+  # Orderer Node (Single - for development)
+  # ============================================================
+  orderer.emergency.net:
+    image: hyperledger/fabric-orderer:${IMAGE_TAG:-2.5}
+    container_name: orderer.emergency.net
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC:-INFO}
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      # TLS
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      # Cluster (for Raft)
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      # Genesis
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer.emergency.net:9443
+      - ORDERER_METRICS_PROVIDER=prometheus
+    working_dir: /root
+    command: orderer
+    ports:
+      - "7050:7050"
+      - "7053:7053"
+      - "9443:9443"
+    volumes:
+      - ../organizations/ordererOrganizations/emergency.net/orderers/orderer.emergency.net/msp:/var/hyperledger/orderer/msp
+      - ../organizations/ordererOrganizations/emergency.net/orderers/orderer.emergency.net/tls:/var/hyperledger/orderer/tls
+      - orderer.emergency.net:/var/hyperledger/production/orderer
+    networks:
+      - fabric
+
+  # ============================================================
+  # CouchDB - Medical Organization
+  # ============================================================
+  couchdb.medical:
+    image: couchdb:${COUCH_IMAGE_TAG:-3.3}
+    container_name: couchdb.medical
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "5984:5984"
+    networks:
+      - fabric
+
+  # ============================================================
+  # Peer - Medical Organization
+  # ============================================================
+  peer0.medical.emergency.net:
+    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5}
+    container_name: peer0.medical.emergency.net
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC:-INFO}
+      - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=emergency-routing_fabric
+      # Peer
+      - CORE_PEER_ID=peer0.medical.emergency.net
+      - CORE_PEER_ADDRESS=peer0.medical.emergency.net:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.medical.emergency.net:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.medical.emergency.net:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.medical.emergency.net:7051
+      - CORE_PEER_LOCALMSPID=MedicalMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      # TLS
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      # CouchDB
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.medical:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      # Operations
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.medical.emergency.net:9444
+      - CORE_METRICS_PROVIDER=prometheus
+    working_dir: /etc/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+      - "7051:7051"
+      - "9444:9444"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../organizations/peerOrganizations/medical.emergency.net/peers/peer0.medical.emergency.net/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/medical.emergency.net/peers/peer0.medical.emergency.net/tls:/etc/hyperledger/fabric/tls
+      - peer0.medical.emergency.net:/var/hyperledger/production
+    depends_on:
+      - couchdb.medical
+    networks:
+      - fabric
+
+  # ============================================================
+  # CouchDB - Police Organization
+  # ============================================================
+  couchdb.police:
+    image: couchdb:${COUCH_IMAGE_TAG:-3.3}
+    container_name: couchdb.police
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "6984:5984"
+    networks:
+      - fabric
+
+  # ============================================================
+  # Peer - Police Organization
+  # ============================================================
+  peer0.police.emergency.net:
+    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5}
+    container_name: peer0.police.emergency.net
+    environment:
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC:-INFO}
+      - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=emergency-routing_fabric
+      # Peer
+      - CORE_PEER_ID=peer0.police.emergency.net
+      - CORE_PEER_ADDRESS=peer0.police.emergency.net:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.police.emergency.net:9052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.police.emergency.net:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.police.emergency.net:9051
+      - CORE_PEER_LOCALMSPID=PoliceMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      # TLS
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      # CouchDB
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.police:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      # Operations
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.police.emergency.net:9445
+      - CORE_METRICS_PROVIDER=prometheus
+    working_dir: /etc/hyperledger/fabric/peer
+    command: peer node start
+    ports:
+      - "9051:9051"
+      - "9445:9445"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../organizations/peerOrganizations/police.emergency.net/peers/peer0.police.emergency.net/msp:/etc/hyperledger/fabric/msp
+      - ../organizations/peerOrganizations/police.emergency.net/peers/peer0.police.emergency.net/tls:/etc/hyperledger/fabric/tls
+      - peer0.police.emergency.net:/var/hyperledger/production
+    depends_on:
+      - couchdb.police
+    networks:
+      - fabric
+
+  # ============================================================
+  # CLI Container for administrative tasks
+  # ============================================================
+  cli:
+    image: hyperledger/fabric-tools:${IMAGE_TAG:-2.5}
+    container_name: cli
+    tty: true
+    stdin_open: true
+    environment:
+      - GOPATH=/opt/gopath
+      - FABRIC_LOGGING_SPEC=${FABRIC_LOGGING_SPEC:-INFO}
+      - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+      # Default to Medical org
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.medical.emergency.net:7051
+      - CORE_PEER_LOCALMSPID=MedicalMSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/medical.emergency.net/peers/peer0.medical.emergency.net/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/medical.emergency.net/peers/peer0.medical.emergency.net/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/medical.emergency.net/peers/peer0.medical.emergency.net/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/medical.emergency.net/users/Admin@medical.emergency.net/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations
+      - ../../chaincode:/opt/gopath/src/github.com/hyperledger/fabric/peer/chaincode
+      - ../scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts
+      - ../configtx:/opt/gopath/src/github.com/hyperledger/fabric/peer/configtx
+      - ../channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
+    depends_on:
+      - peer0.medical.emergency.net
+      - peer0.police.emergency.net
+    networks:
+      - fabric
+

@@ -1,0 +1,20 @@
+# Emergency Routing System - Chaincode Container (CCAAS)
+
+networks:
+  fabric:
+    name: emergency-routing_fabric
+    external: true
+
+services:
+  routing-chaincode:
+    image: routing-chaincode:1.0
+    container_name: routing-chaincode
+    hostname: routing-chaincode
+    environment:
+      - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
+      - CORE_CHAINCODE_ID_NAME=${CHAINCODE_ID}
+    ports:
+      - "9999:9999"
+    networks:
+      - fabric
+

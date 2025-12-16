@@ -1,0 +1,71 @@
+# Emergency Routing System - Certificate Authorities
+# 2 Organizations: Medical + Police
+
+networks:
+  fabric:
+    name: emergency-routing_fabric
+
+services:
+  # ============================================================
+  # Certificate Authority - Medical Organization
+  # ============================================================
+  ca.medical.emergency.net:
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5}
+    container_name: ca.medical.emergency.net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-medical
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
+    ports:
+      - "7054:7054"
+      - "17054:17054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/medical:/etc/hyperledger/fabric-ca-server
+    networks:
+      - fabric
+
+  # ============================================================
+  # Certificate Authority - Police Organization
+  # ============================================================
+  ca.police.emergency.net:
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5}
+    container_name: ca.police.emergency.net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-police
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=8054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:18054
+    ports:
+      - "8054:8054"
+      - "18054:18054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/police:/etc/hyperledger/fabric-ca-server
+    networks:
+      - fabric
+
+  # ============================================================
+  # Certificate Authority - Orderer Organization
+  # ============================================================
+  ca.orderer.emergency.net:
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5}
+    container_name: ca.orderer.emergency.net
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=9054
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
+    ports:
+      - "9054:9054"
+      - "19054:19054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ../organizations/fabric-ca/orderer:/etc/hyperledger/fabric-ca-server
+    networks:
+      - fabric
+

@@ -1,0 +1,230 @@
+/* GridMap Component Styles */
+
+.grid-map-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: auto;
+}
+
+.grid-map-svg {
+  max-width: 100%;
+  max-height: 100%;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.4));
+}
+
+/* Segment styles */
+.segment-group {
+  cursor: pointer;
+}
+
+.segment-line {
+  transition: stroke-width 0.15s ease;
+}
+
+.segment-group:hover .segment-line {
+  stroke-width: 14px;
+}
+
+.segment-group.selected .segment-line {
+  stroke-width: 14px;
+}
+
+.segment-glow {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.segment-label {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+
+.segment-group:hover .segment-label,
+.segment-group.selected .segment-label {
+  opacity: 1;
+}
+
+/* Node styles */
+.node-group {
+  /* Nodes don't need special styles */
+}
+
+.node {
+  transition: all 0.2s ease;
+}
+
+.node.poi {
+  filter: url(#glow);
+}
+
+.node-glow {
+  animation: nodeGlow 3s ease-in-out infinite;
+}
+
+@keyframes nodeGlow {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.node-label {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+/* Vehicle marker styles */
+.vehicle-marker {
+  transition: transform 0.2s ease;
+}
+
+.vehicle-marker.static {
+  animation: vehicleBounce 2s ease-in-out infinite;
+}
+
+@keyframes vehicleBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Animated vehicle markers (Phase 5 Simulation) */
+.vehicle-marker.animated {
+  transition: none; /* Disable transition for smooth animation */
+}
+
+.vehicle-marker.animated.moving .vehicle-body {
+  animation: vehicleMoving 0.8s ease-in-out infinite;
+}
+
+.vehicle-marker.animated.moving .vehicle-glow {
+  animation: vehicleGlowPulse 1s ease-in-out infinite;
+}
+
+.vehicle-marker.animated.paused .vehicle-body {
+  animation: vehiclePaused 1.5s ease-in-out infinite;
+}
+
+.vehicle-marker.animated .vehicle-trail {
+  animation: trailFade 0.5s ease-out forwards;
+}
+
+@keyframes vehicleMoving {
+  0%, 100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes vehicleGlowPulse {
+  0%, 100% {
+    opacity: 0.3;
+    r: 18;
+  }
+  50% {
+    opacity: 0.6;
+    r: 22;
+  }
+}
+
+@keyframes vehiclePaused {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes trailFade {
+  0% {
+    opacity: 0.3;
+    r: 15;
+  }
+  100% {
+    opacity: 0;
+    r: 30;
+  }
+}
+
+/* Route visualization styles */
+.segment-group.highlighted .segment-line {
+  stroke-width: 12px;
+}
+
+.segment-group.highlighted .segment-glow.route-glow {
+  animation: routePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes routePulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.segment-line.route-preview {
+  animation: routeDash 1s linear infinite;
+}
+
+@keyframes routeDash {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 18;
+  }
+}
+
+.route-order-badge {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.segment-group.highlighted .segment-label {
+  opacity: 1;
+}
+
+/* Active mission route */
+.segment-group.active-route .segment-line {
+  stroke-width: 10px;
+}
+
+.segment-group.active-route .segment-glow {
+  animation: activeMissionPulse 2s ease-in-out infinite;
+}
+
+@keyframes activeMissionPulse {
+  0%, 100% {
+    opacity: 0.3;
+    stroke-width: 18px;
+  }
+  50% {
+    opacity: 0.5;
+    stroke-width: 22px;
+  }
+}
