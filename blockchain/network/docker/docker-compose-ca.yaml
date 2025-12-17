@@ -4,6 +4,7 @@
 networks:
   fabric:
     name: emergency-routing_fabric
+    external: true
 
 services:
   # ============================================================

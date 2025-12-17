@@ -102,17 +102,77 @@ generate_genesis() {
     print_success "Channel artifacts directory prepared"
 }
 
+# Remove existing network if it needs to be recreated
+cleanup_network() {
+    print_info "Checking for existing network..."
+    
+    # Check if network exists and remove it if needed
+    if docker network ls | grep -q "emergency-routing_fabric"; then
+        print_warning "Existing network found. Removing it to avoid recreation errors..."
+        
+        # First, stop all containers that might be using the network
+        cd "$DOCKER_DIR"
+        print_info "Stopping containers that might be using the network..."
+        docker-compose -f docker-compose-net.yaml down 2>/dev/null || true
+        docker-compose -f docker-compose-ca.yaml down 2>/dev/null || true
+        
+        # Wait a moment for containers to stop
+        sleep 2
+        
+        # Now try to remove the network
+        print_info "Removing existing network..."
+        docker network rm emergency-routing_fabric 2>/dev/null || {
+            # If still in use, force disconnect all containers
+            print_warning "Network still in use. Force removing..."
+            docker network inspect emergency-routing_fabric 2>/dev/null | \
+                grep -oP '"Name": "\K[^"]+' | \
+                xargs -r -I {} docker network disconnect -f emergency-routing_fabric {} 2>/dev/null || true
+            docker network rm emergency-routing_fabric 2>/dev/null || true
+        }
+        
+        # Wait a moment for network removal to complete
+        sleep 1
+        
+        # Verify network is gone
+        if docker network ls | grep -q "emergency-routing_fabric"; then
+            print_warning "Network still exists. Will attempt to continue..."
+        else
+            print_success "Network removed successfully"
+        fi
+    fi
+}
+
 # Start the network
 start_network() {
     print_info "Starting the Fabric network..."
     
+    # Clean up existing network if needed
+    cleanup_network
+    
     cd "$DOCKER_DIR"
     
-    # Start CAs first
+    # Create the network externally first with explicit settings to avoid conflicts
+    print_info "Creating network with explicit configuration..."
+    docker network create \
+        --driver bridge \
+        --subnet 172.28.0.0/16 \
+        emergency-routing_fabric 2>/dev/null || {
+        # Network might already exist, try to remove and recreate
+        docker network rm emergency-routing_fabric 2>/dev/null || true
+        sleep 1
+        docker network create \
+            --driver bridge \
+            --subnet 172.28.0.0/16 \
+            emergency-routing_fabric
+    }
+    
+    # Start CAs first (they will use the existing network)
+    print_info "Starting Certificate Authorities..."
     docker-compose -f docker-compose-ca.yaml up -d
     sleep 3
     
-    # Start network components
+    # Start network components (they will use the existing network)
+    print_info "Starting network components..."
     docker-compose -f docker-compose-net.yaml up -d
     
     print_success "Network started"
@@ -133,6 +193,9 @@ stop_network() {
     
     docker-compose -f docker-compose-net.yaml down --volumes --remove-orphans
     docker-compose -f docker-compose-ca.yaml down --volumes --remove-orphans
+    
+    # Remove the network if it exists
+    docker network rm emergency-routing_fabric 2>/dev/null || true
     
     print_success "Network stopped"
 }
@@ -155,6 +218,10 @@ clean_network() {
     
     # Remove chaincode images
     docker images -q "dev-peer*" | xargs -r docker rmi -f 2>/dev/null || true
+    
+    # Ensure network is removed
+    docker network rm emergency-routing_fabric 2>/dev/null || true
+    docker network prune -f
     
     print_success "Network cleaned up"
 }
