@@ -23,6 +23,15 @@ CONFIGTX_DIR="$NETWORK_DIR/configtx"
 # Channel name
 CHANNEL_NAME="emergency-channel"
 
+# Determine Docker Compose command (v1 uses docker-compose, v2+ uses docker compose)
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif docker compose version &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker compose"
+else
+    DOCKER_COMPOSE_CMD="docker-compose"  # fallback
+fi
+
 # Print functions
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -59,6 +68,11 @@ check_prerequisites() {
     # Check if cryptogen is available
     if ! command -v cryptogen &> /dev/null; then
         print_warning "cryptogen not found in PATH. Will use Docker image."
+    fi
+    
+    # Check if configtxgen is available
+    if ! command -v configtxgen &> /dev/null; then
+        print_warning "configtxgen not found in PATH. Will use Docker image."
     fi
     
     print_success "Prerequisites check passed"
@@ -113,8 +127,8 @@ cleanup_network() {
         # First, stop all containers that might be using the network
         cd "$DOCKER_DIR"
         print_info "Stopping containers that might be using the network..."
-        docker-compose -f docker-compose-net.yaml down 2>/dev/null || true
-        docker-compose -f docker-compose-ca.yaml down 2>/dev/null || true
+        $DOCKER_COMPOSE_CMD -f docker-compose-net.yaml down 2>/dev/null || true
+        $DOCKER_COMPOSE_CMD -f docker-compose-ca.yaml down 2>/dev/null || true
         
         # Wait a moment for containers to stop
         sleep 2
@@ -168,12 +182,12 @@ start_network() {
     
     # Start CAs first (they will use the existing network)
     print_info "Starting Certificate Authorities..."
-    docker-compose -f docker-compose-ca.yaml up -d
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_DIR/docker-compose-ca.yaml" up -d
     sleep 3
     
     # Start network components (they will use the existing network)
     print_info "Starting network components..."
-    docker-compose -f docker-compose-net.yaml up -d
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_DIR/docker-compose-net.yaml" up -d
     
     print_success "Network started"
     
@@ -191,8 +205,8 @@ stop_network() {
     
     cd "$DOCKER_DIR"
     
-    docker-compose -f docker-compose-net.yaml down --volumes --remove-orphans
-    docker-compose -f docker-compose-ca.yaml down --volumes --remove-orphans
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_DIR/docker-compose-net.yaml" down --volumes --remove-orphans
+    $DOCKER_COMPOSE_CMD -f "$DOCKER_DIR/docker-compose-ca.yaml" down --volumes --remove-orphans
     
     # Remove the network if it exists
     docker network rm emergency-routing_fabric 2>/dev/null || true
@@ -233,7 +247,20 @@ create_channel() {
     # First, generate the channel genesis block using configtxgen
     print_info "Generating channel genesis block..."
     export FABRIC_CFG_PATH="$CONFIGTX_DIR"
-    configtxgen -profile EmergencyChannel -outputBlock "$NETWORK_DIR/channel-artifacts/${CHANNEL_NAME}.block" -channelID $CHANNEL_NAME
+    
+    # Use configtxgen if available, otherwise use Docker
+    if command -v configtxgen &> /dev/null; then
+        configtxgen -profile EmergencyChannel -outputBlock "$NETWORK_DIR/channel-artifacts/${CHANNEL_NAME}.block" -channelID $CHANNEL_NAME
+    else
+        print_info "Using Docker to run configtxgen..."
+        docker run --rm \
+            -v "$CONFIGTX_DIR:/configtx" \
+            -v "$NETWORK_DIR/organizations:/organizations" \
+            -v "$NETWORK_DIR/channel-artifacts:/output" \
+            -e FABRIC_CFG_PATH=/configtx \
+            hyperledger/fabric-tools:2.5 \
+            configtxgen -profile EmergencyChannel -outputBlock /output/${CHANNEL_NAME}.block -channelID $CHANNEL_NAME
+    fi
     
     # Use osnadmin to join orderer to channel (run via Docker)
     print_info "Joining orderer to channel using osnadmin..."

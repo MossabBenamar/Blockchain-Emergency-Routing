@@ -54,7 +54,7 @@ test-chaincode:
 
 # Utility commands
 logs:
-	@docker-compose -f blockchain/network/docker/docker-compose-net.yaml logs -f
+	@cd blockchain/network/docker && (docker compose -f docker-compose-net.yaml logs -f 2>/dev/null || docker-compose -f docker-compose-net.yaml logs -f)
 
 logs-peer-medical:
 	@docker logs -f peer0.medical.emergency.net

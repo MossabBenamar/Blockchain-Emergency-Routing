@@ -1,46 +1,109 @@
-# Dependencies
+# Dependency directories
 node_modules/
 vendor/
+bower_components/
+jspm_packages/
+.pnp/
+.pnp.js
+.yarn/
+.pnp.cjs
+.pnpm-debug.log
 
-# Build outputs
+# Build outputs and runtime-generated files
 dist/
 build/
+out/
+public/
+bin/
+lib/
 *.exe
 *.out
+*.dll
+*.so
+*.dylib
+*.pid
 
-# Environment files
+# Process and runtime
+*.lock
+*.seed
+*.orig
+*.bak
+
+# Runtime-generated cache, sessions, sockets, and runtime files
+.cache/
+.next/
+.nuxt/
+.svelte-kit/
+.sqllite
+*.sqlite
+*.db
+*.rdb
+*.sublime-workspace
+*.sublime-project
+*.tmp
+*.temp
+tmp/
+temp/
+sessions/
+pids/
+*.sock
+
+# Environment and configuration files (may be generated or customized at runtime)
 .env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 
-# IDE
+# IDE/editor settings
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS files
+# Operating system files
 .DS_Store
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Logs
+# Log files
 *.log
+logs/
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
+# Coverage and reports
+coverage/
+.nyc_output/
+*.lcov
+*.clover
 
 # Chaincode packages
 *.tar.gz
 
-# Wallet credentials
+# Wallet credentials (may be runtime-generated)
 wallet/
 
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Test coverage
-coverage/
+# Test output
+test-output/
+junit-report.xml
+cypress/screenshots/
+cypress/videos/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Misc runtime files
+dump.rdb
+*.snap
+*.pid
+*.seed
+*.vuepress/dist
+
+# Ignore package manager state files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
