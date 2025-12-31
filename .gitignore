@@ -44,3 +44,7 @@ coverage/
 
 # TypeScript build info
 *.tsbuildinfo
+
+# Hyperledger Fabric crypto
+blockchain/network/organizations/**
+*.sk

@@ -11,7 +11,7 @@ This guide contains all commands needed to start the project after closing it.
 **First time setup:**
 1. Install dependencies: `cd backend && npm install && cd ../frontend && npm install`
 2. Build chaincode: `cd blockchain/chaincode/routing && docker build -t routing-chaincode:1.0 .`
-3. Start network: `make network-up`
+3. Back to the folder "/Blockchain-Emergency-Routing" -> Start network: `make network-up`
 4. Deploy chaincode: `./blockchain/network/scripts/deploy-ccaas.sh`
 5. Start services: Backend (2 terminals) + Frontend (1 terminal)
 
