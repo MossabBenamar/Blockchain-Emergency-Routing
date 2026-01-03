@@ -175,6 +175,7 @@ Profiles:
 
   # Channel configuration for Fabric 2.5+ (no system channel)
   EmergencyChannel:
+    Consortium: EmergencyConsortium
     <<: *ChannelDefaults
     Orderer:
       <<: *OrdererDefaults
