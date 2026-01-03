@@ -285,7 +285,9 @@ export async function checkSegmentAvailability(
     const segment = await couchdb.getSegment(segmentId);
 
     if (!segment) {
-        return { available: false, requiresPreemption: false };
+        // Segment doesn't exist yet, so it's free (lazy initialization on chaincode)
+        console.log(`[ConflictService] Segment ${segmentId} does not exist yet (lazy init), treating as free`);
+        return { available: true, requiresPreemption: false };
     }
 
     if (segment.status === 'free') {
