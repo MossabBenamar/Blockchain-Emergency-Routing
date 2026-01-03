@@ -14,101 +14,21 @@ type SegmentContract struct {
 	contractapi.Contract
 }
 
-// InitSegments initializes the 5x5 grid segments
-// This should be called once when setting up the network
+// InitSegments is DEPRECATED - segments are now created lazily when first reserved
+// This function is kept for backward compatibility but does nothing
+// Map topology is stored in PostgreSQL, not in the blockchain
+// The blockchain only stores reservation state (status, reservedBy, missionId, etc.)
 func (c *SegmentContract) InitSegments(
 	ctx contractapi.TransactionContextInterface,
 ) error {
-	// Define the 5x5 grid segments
-	// Horizontal segments (20 total: 4 per row, 5 rows)
-	// Vertical segments (20 total: 5 per column, 4 columns)
-	// Helper function to create a free segment with all fields explicitly set
-	newFreeSegment := func(id, from, to string) models.Segment {
-		return models.Segment{
-			DocType:       "segment",
-			SegmentID:     id,
-			FromNode:      from,
-			ToNode:        to,
-			Status:        models.StatusFree,
-			ReservedBy:    "",
-			MissionID:     "",
-			OrgType:       "",
-			PriorityLevel: 0,
-			ReservedAt:    0,
-		}
-	}
-
-	segments := []models.Segment{
-		// Row 1: N1-N2-N3-N4-N5
-		newFreeSegment("S1", "N1", "N2"),
-		newFreeSegment("S2", "N2", "N3"),
-		newFreeSegment("S3", "N3", "N4"),
-		newFreeSegment("S4", "N4", "N5"),
-		// Row 2: N6-N7-N8-N9-N10
-		newFreeSegment("S5", "N6", "N7"),
-		newFreeSegment("S6", "N7", "N8"),
-		newFreeSegment("S7", "N8", "N9"),
-		newFreeSegment("S8", "N9", "N10"),
-		// Row 3: N11-N12-N13-N14-N15
-		newFreeSegment("S9", "N11", "N12"),
-		newFreeSegment("S10", "N12", "N13"),
-		newFreeSegment("S11", "N13", "N14"),
-		newFreeSegment("S12", "N14", "N15"),
-		// Row 4: N16-N17-N18-N19-N20
-		newFreeSegment("S13", "N16", "N17"),
-		newFreeSegment("S14", "N17", "N18"),
-		newFreeSegment("S15", "N18", "N19"),
-		newFreeSegment("S16", "N19", "N20"),
-		// Row 5: N21-N22-N23-N24-N25
-		newFreeSegment("S17", "N21", "N22"),
-		newFreeSegment("S18", "N22", "N23"),
-		newFreeSegment("S19", "N23", "N24"),
-		newFreeSegment("S20", "N24", "N25"),
-
-		// Vertical segments
-		// Column 1: N1-N6-N11-N16-N21
-		newFreeSegment("S21", "N1", "N6"),
-		newFreeSegment("S22", "N6", "N11"),
-		newFreeSegment("S23", "N11", "N16"),
-		newFreeSegment("S24", "N16", "N21"),
-		// Column 2: N2-N7-N12-N17-N22
-		newFreeSegment("S25", "N2", "N7"),
-		newFreeSegment("S26", "N7", "N12"),
-		newFreeSegment("S27", "N12", "N17"),
-		newFreeSegment("S28", "N17", "N22"),
-		// Column 3: N3-N8-N13-N18-N23
-		newFreeSegment("S29", "N3", "N8"),
-		newFreeSegment("S30", "N8", "N13"),
-		newFreeSegment("S31", "N13", "N18"),
-		newFreeSegment("S32", "N18", "N23"),
-		// Column 4: N4-N9-N14-N19-N24
-		newFreeSegment("S33", "N4", "N9"),
-		newFreeSegment("S34", "N9", "N14"),
-		newFreeSegment("S35", "N14", "N19"),
-		newFreeSegment("S36", "N19", "N24"),
-		// Column 5: N5-N10-N15-N20-N25
-		newFreeSegment("S37", "N5", "N10"),
-		newFreeSegment("S38", "N10", "N15"),
-		newFreeSegment("S39", "N15", "N20"),
-		newFreeSegment("S40", "N20", "N25"),
-	}
-
-	for _, segment := range segments {
-		segmentJSON, err := json.Marshal(segment)
-		if err != nil {
-			return fmt.Errorf("failed to marshal segment %s: %v", segment.SegmentID, err)
-		}
-
-		err = ctx.GetStub().PutState(segment.SegmentID, segmentJSON)
-		if err != nil {
-			return fmt.Errorf("failed to write segment %s: %v", segment.SegmentID, err)
-		}
-	}
-
+	// No-op: segments are created on-demand when reserved
+	// Map data (fromNode, toNode, geometry) is stored in PostgreSQL
+	// Blockchain only stores reservation state
 	return nil
 }
 
 // GetSegment retrieves a segment by ID
+// Returns nil if segment doesn't exist (for lazy initialization)
 func (c *SegmentContract) GetSegment(
 	ctx contractapi.TransactionContextInterface,
 	segmentID string,
@@ -118,7 +38,8 @@ func (c *SegmentContract) GetSegment(
 		return nil, fmt.Errorf("failed to read state: %v", err)
 	}
 	if segmentJSON == nil {
-		return nil, fmt.Errorf("segment %s does not exist", segmentID)
+		// Segment doesn't exist - return nil (caller can create it)
+		return nil, nil
 	}
 
 	var segment models.Segment
@@ -128,6 +49,22 @@ func (c *SegmentContract) GetSegment(
 	}
 
 	return &segment, nil
+}
+
+// createFreeSegment creates a new free segment (lazy initialization)
+func (c *SegmentContract) createFreeSegment(segmentID string) *models.Segment {
+	return &models.Segment{
+		DocType:       "segment",
+		SegmentID:     segmentID,
+		FromNode:      "", // Not stored in blockchain - map topology is in database
+		ToNode:        "", // Not stored in blockchain - map topology is in database
+		Status:        models.StatusFree,
+		ReservedBy:    "",
+		MissionID:     "",
+		OrgType:       "",
+		PriorityLevel: 0,
+		ReservedAt:    0,
+	}
 }
 
 // GetAllSegments retrieves all segments
@@ -161,7 +98,9 @@ func (c *SegmentContract) GetAllSegments(
 }
 
 // ReserveSegment reserves a segment for a vehicle/mission
+// Creates the segment if it doesn't exist (lazy initialization)
 // Returns a conflict if the segment is already reserved by same priority
+// NOTE: Map topology (fromNode, toNode) is NOT stored in blockchain - only reservation state
 func (c *SegmentContract) ReserveSegment(
 	ctx contractapi.TransactionContextInterface,
 	segmentID string,
@@ -169,10 +108,15 @@ func (c *SegmentContract) ReserveSegment(
 	missionID string,
 	priorityLevel int,
 ) (*models.Conflict, error) {
-	// Get segment
+	// Get segment (or nil if it doesn't exist)
 	segment, err := c.GetSegment(ctx, segmentID)
 	if err != nil {
 		return nil, err
+	}
+	
+	// Lazy initialization: create segment if it doesn't exist
+	if segment == nil {
+		segment = c.createFreeSegment(segmentID)
 	}
 
 	// Get caller org
@@ -286,6 +230,11 @@ func (c *SegmentContract) ReleaseSegment(
 	if err != nil {
 		return err
 	}
+	
+	// If segment doesn't exist, nothing to release
+	if segment == nil {
+		return fmt.Errorf("segment %s does not exist (cannot release)", segmentID)
+	}
 
 	// Verify the vehicle holds the reservation
 	if segment.ReservedBy != vehicleID {
@@ -325,6 +274,11 @@ func (c *SegmentContract) OccupySegment(
 	segment, err := c.GetSegment(ctx, segmentID)
 	if err != nil {
 		return err
+	}
+	
+	// If segment doesn't exist, cannot occupy
+	if segment == nil {
+		return fmt.Errorf("segment %s does not exist (cannot occupy)", segmentID)
 	}
 
 	// Verify the vehicle holds the reservation

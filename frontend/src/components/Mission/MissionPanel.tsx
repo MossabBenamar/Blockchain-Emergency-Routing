@@ -4,9 +4,9 @@
  * Handles mission creation, route visualization, and mission lifecycle management
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
-import type { Node, Vehicle, Mission, RouteResult, OrgType } from '../../types';
+import type { Node, Vehicle, Mission, RouteResult, OrgType, VehiclePosition } from '../../types';
 import './MissionPanel.css';
 
 interface MissionPanelProps {
@@ -14,9 +14,10 @@ interface MissionPanelProps {
   vehicles: Vehicle[];
   currentOrg: OrgType;
   activeMissions: Mission[];
+  vehiclePositions?: VehiclePosition[];
   onMissionCreated: (mission: Mission) => void;
   onMissionCompleted: (mission: Mission) => void;
-  onRouteCalculated: (path: string[]) => void;
+  onRouteCalculated: (path: string[], routeResult?: RouteResult) => void;
   onClearRoute: () => void;
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
@@ -27,6 +28,7 @@ export function MissionPanel({
   vehicles,
   currentOrg,
   activeMissions,
+  vehiclePositions = [],
   onMissionCreated,
   onMissionCompleted,
   onRouteCalculated,
@@ -36,7 +38,6 @@ export function MissionPanel({
 }: MissionPanelProps) {
   // Form state
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
-  const [originNode, setOriginNode] = useState<string>('');
   const [destNode, setDestNode] = useState<string>('');
   
   // Route preview state
@@ -49,13 +50,58 @@ export function MissionPanel({
   // Points of interest for quick selection
   const poiNodes = nodes.filter(n => n.type === 'poi');
 
+  // Get vehicle's current location node (from position or home base)
+  const getVehicleOriginNode = useCallback((vehicleId: string): string | null => {
+    // First, check if vehicle has a current position
+    const vehiclePosition = vehiclePositions.find(vp => vp.vehicleId === vehicleId);
+    if (vehiclePosition?.lat !== undefined && vehiclePosition?.lon !== undefined) {
+      // Find the nearest node to the vehicle's current position
+      let nearestNode: Node | null = null;
+      let minDistance = Infinity;
+      
+      nodes.forEach(node => {
+        if (node.lat !== undefined && node.lon !== undefined) {
+          const distance = Math.sqrt(
+            Math.pow(node.lat - vehiclePosition.lat!, 2) + 
+            Math.pow(node.lon - vehiclePosition.lon!, 2)
+          );
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestNode = node;
+          }
+        }
+      });
+      
+      if (nearestNode) {
+        return nearestNode.id;
+      }
+    }
+    
+    // Fallback: find vehicle's home base (POI node matching org type)
+    const vehicle = vehicles.find(v => v.vehicleId === vehicleId);
+    if (vehicle) {
+      const homeBase = poiNodes.find(n => n.orgType === vehicle.orgType);
+      if (homeBase) {
+        return homeBase.id;
+      }
+    }
+    
+    return null;
+  }, [vehiclePositions, nodes, vehicles, poiNodes]);
+
+  // Auto-determine origin when vehicle is selected
+  const originNode = useMemo(() => {
+    if (!selectedVehicle) return '';
+    return getVehicleOriginNode(selectedVehicle) || '';
+  }, [selectedVehicle, getVehicleOriginNode]);
+
   // Clear route preview when inputs change significantly
   useEffect(() => {
     if (routePreview && (originNode !== routePreview.nodePath[0] || destNode !== routePreview.nodePath[routePreview.nodePath.length - 1])) {
       setRoutePreview(null);
       onClearRoute();
     }
-  }, [originNode, destNode]);
+  }, [originNode, destNode, routePreview, onClearRoute]);
 
   // Calculate route preview
   const handleCalculateRoute = useCallback(async () => {
@@ -81,7 +127,7 @@ export function MissionPanel({
 
       if (response.success && response.data) {
         setRoutePreview(response.data);
-        onRouteCalculated(response.data.path);
+        onRouteCalculated(response.data.path, response.data);
       } else {
         setError(response.error || 'Failed to calculate route');
       }
@@ -124,7 +170,6 @@ export function MissionPanel({
         onMissionCreated(activateResponse.data);
         // Reset form
         setSelectedVehicle('');
-        setOriginNode('');
         setDestNode('');
         setRoutePreview(null);
         onClearRoute();
@@ -162,11 +207,10 @@ export function MissionPanel({
 
       if (response.success && response.data) {
         onMissionCreated(response.data.mission);
-        onRouteCalculated(response.data.route.path);
+        onRouteCalculated(response.data.route.path, response.data.route);
         // Reset form after short delay to show the route
         setTimeout(() => {
           setSelectedVehicle('');
-          setOriginNode('');
           setDestNode('');
           setRoutePreview(null);
         }, 2000);
@@ -272,56 +316,43 @@ export function MissionPanel({
           </select>
         </div>
 
-        <div className="form-row">
+        {/* Origin is auto-determined from vehicle location */}
+        {selectedVehicle && originNode && (
           <div className="form-group">
-            <label>Origin</label>
-            <select 
-              value={originNode} 
-              onChange={(e) => setOriginNode(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="">Select origin...</option>
-              <optgroup label="Points of Interest">
-                {poiNodes.map(n => (
-                  <option key={n.id} value={n.id}>
-                    {n.label || n.id}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="All Nodes">
-                {nodes.map(n => (
-                  <option key={n.id} value={n.id}>
-                    {n.id} {n.label ? `(${n.label})` : ''}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+            <label>Origin (Vehicle Location)</label>
+            <input 
+              type="text" 
+              value={getNodeLabel(originNode)} 
+              disabled 
+              className="readonly-input"
+              title="Origin is automatically determined from vehicle's current location"
+            />
           </div>
+        )}
 
-          <div className="form-group">
-            <label>Destination</label>
-            <select 
-              value={destNode} 
-              onChange={(e) => setDestNode(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="">Select destination...</option>
-              <optgroup label="Points of Interest">
-                {poiNodes.map(n => (
-                  <option key={n.id} value={n.id}>
-                    {n.label || n.id}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="All Nodes">
-                {nodes.map(n => (
-                  <option key={n.id} value={n.id}>
-                    {n.id} {n.label ? `(${n.label})` : ''}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
+        <div className="form-group">
+          <label>Destination</label>
+          <select 
+            value={destNode} 
+            onChange={(e) => setDestNode(e.target.value)}
+            disabled={isLoading || !selectedVehicle}
+          >
+            <option value="">Select destination...</option>
+            <optgroup label="Points of Interest">
+              {poiNodes.map(n => (
+                <option key={n.id} value={n.id}>
+                  {n.label || n.id}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="All Nodes">
+              {nodes.map(n => (
+                <option key={n.id} value={n.id}>
+                  {n.id} {n.label ? `(${n.label})` : ''}
+                </option>
+              ))}
+            </optgroup>
+          </select>
         </div>
 
         <div className="button-row">

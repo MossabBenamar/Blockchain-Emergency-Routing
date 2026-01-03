@@ -3,6 +3,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as couchdb from '../../services/couchdb';
 import { ApiResponse, MapData, Segment } from '../../models/types';
+import {
+  getManhattanNodes,
+  getManhattanSegments,
+  getManhattanBounds,
+  getManhattanCenter,
+  getManhattanZoom,
+} from '../../services/map/manhattan';
 
 const router = Router();
 
@@ -10,16 +17,60 @@ const router = Router();
 let mapDataCache: MapData | null = null;
 
 /**
- * Load map data from JSON file
+ * Load Manhattan map data
  */
 function loadMapData(): MapData {
   if (mapDataCache) {
     return mapDataCache;
   }
   
-  const mapPath = path.resolve(__dirname, '..', '..', '..', '..', 'data', 'maps', 'grid-5x5.json');
-  const mapContent = fs.readFileSync(mapPath, 'utf-8');
-  mapDataCache = JSON.parse(mapContent) as MapData;
+  const nodes = getManhattanNodes();
+  const segments = getManhattanSegments();
+  const bounds = getManhattanBounds();
+  const center = getManhattanCenter();
+  const zoom = getManhattanZoom();
+  
+  // Convert to MapNode format
+  const mapNodes = nodes.map(node => ({
+    id: node.id,
+    lat: node.lat,
+    lon: node.lon,
+    label: node.label,
+    type: node.type,
+    orgType: node.orgType,
+  }));
+  
+  // Convert to MapSegment format
+  const mapSegments = segments.map(segment => ({
+    id: segment.id,
+    from: segment.from,
+    to: segment.to,
+    weight: segment.weight,
+    bidirectional: segment.bidirectional,
+    geometry: segment.geometry,
+  }));
+  
+  // Extract POIs
+  const pointsOfInterest = nodes
+    .filter(node => node.type === 'poi')
+    .map(node => ({
+      nodeId: node.id,
+      name: node.label || node.id,
+      type: node.type,
+      orgType: node.orgType,
+    }));
+  
+  mapDataCache = {
+    name: 'Manhattan Emergency Routing Map',
+    description: 'Real-time emergency vehicle routing system for Manhattan',
+    version: '2.0.0',
+    nodes: mapNodes,
+    segments: mapSegments,
+    pointsOfInterest,
+    bounds,
+    center,
+    zoom,
+  };
   
   return mapDataCache;
 }

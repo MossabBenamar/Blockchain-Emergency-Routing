@@ -33,6 +33,11 @@ network-down:
 	@cd blockchain/network/scripts && ./network.sh down
 
 network-clean:
+	@echo "[INFO] Fixing permissions before cleanup..."
+	@CURRENT_USER=$$(whoami) && \
+	if [ -d "blockchain/network/organizations" ]; then \
+		sudo chown -R $$CURRENT_USER:$$(id -gn) blockchain/network/organizations/ 2>/dev/null || true; \
+	fi
 	@cd blockchain/network/scripts && ./network.sh clean
 
 network-restart:

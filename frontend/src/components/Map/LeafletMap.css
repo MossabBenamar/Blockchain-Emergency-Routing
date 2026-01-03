@@ -1,0 +1,124 @@
+/* LeafletMap Component Styles */
+
+.leaflet-map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background-color: #1a1a2e;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Custom vehicle marker styles */
+.vehicle-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Pulse animation for moving vehicles */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+  }
+}
+
+/* Popup styles */
+.vehicle-popup,
+.poi-popup {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.vehicle-popup strong,
+.poi-popup strong {
+  color: #00d4ff;
+  font-size: 16px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.vehicle-popup span,
+.poi-popup span {
+  color: #adb5bd;
+  display: block;
+  margin: 2px 0;
+}
+
+.poi-type {
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #868e96;
+}
+
+.poi-org {
+  text-transform: capitalize;
+  font-weight: 600;
+  color: #4dabf7;
+}
+
+/* Leaflet popup customization */
+.leaflet-popup-content-wrapper {
+  background-color: #1a1a2e;
+  color: #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-popup-content {
+  margin: 12px;
+  color: #e0e0e0;
+}
+
+.leaflet-popup-tip {
+  background-color: #1a1a2e;
+}
+
+.leaflet-popup-close-button {
+  color: #adb5bd;
+  font-size: 20px;
+  padding: 4px 8px;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #fff;
+}
+
+/* Map controls styling */
+.leaflet-control {
+  background-color: rgba(26, 26, 46, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.leaflet-control-zoom a {
+  background-color: rgba(26, 26, 46, 0.9);
+  color: #e0e0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: rgba(0, 212, 255, 0.2);
+  color: #00d4ff;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none;
+}
+
+/* Segment hover effect */
+.leaflet-container {
+  cursor: crosshair;
+}
+
+/* Loading state */
+.leaflet-map-container.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}

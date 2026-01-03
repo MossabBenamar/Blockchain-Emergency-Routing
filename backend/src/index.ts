@@ -1,8 +1,11 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
 import { config } from './config';
 import { connectGateway, disconnectGateway, isConnected } from './services/fabric/gateway';
 import { initWebSocket, closeWebSocket, getClientCount } from './services/realtime/websocket';
+import { initSocketIO, closeSocketIO } from './services/realtime/socketio';
+import { initPostgres, initSchema, closePostgres } from './services/database/postgres';
 import { errorHandler, notFoundHandler } from './api/middleware/errorHandler';
 
 // Import routes
@@ -14,6 +17,7 @@ import simulationRoutes from './api/routes/simulation';
 import historyRoutes from './api/routes/history';
 
 const app = express();
+const httpServer = createServer(app);
 
 // Middleware
 app.use(cors());
@@ -74,7 +78,9 @@ async function shutdown() {
   console.log('\nShutting down gracefully...');
   
   try {
+    await closeSocketIO();
     await closeWebSocket();
+    await closePostgres();
     await disconnectGateway();
     console.log('Shutdown complete');
     process.exit(0);
@@ -94,6 +100,20 @@ async function start() {
     console.log(`Environment: ${config.nodeEnv}`);
     console.log(`Organization: ${config.orgType}`);
     
+    // Initialize PostgreSQL + PostGIS (optional)
+    if (process.env.DB_HOST) {
+      try {
+        console.log('Initializing PostgreSQL + PostGIS...');
+        initPostgres();
+        await initSchema();
+        console.log('PostgreSQL + PostGIS initialized');
+      } catch (error) {
+        console.warn('PostgreSQL initialization failed, continuing without database:', error);
+      }
+    } else {
+      console.log('PostgreSQL not configured (DB_HOST not set), skipping database initialization');
+    }
+
     // Connect to Fabric Gateway
     console.log('Connecting to Hyperledger Fabric...');
     await connectGateway(config.orgType as 'medical' | 'police');
@@ -102,13 +122,17 @@ async function start() {
     // Start WebSocket server
     initWebSocket(config.wsPort);
     
+    // Initialize Socket.IO
+    initSocketIO(httpServer);
+    
     // Start HTTP server
-    app.listen(config.port, () => {
+    httpServer.listen(config.port, () => {
       console.log(`\n========================================`);
       console.log(`  Emergency Vehicle Routing API`);
       console.log(`========================================`);
       console.log(`  HTTP Server:     http://localhost:${config.port}`);
       console.log(`  WebSocket:       ws://localhost:${config.wsPort}`);
+      console.log(`  Socket.IO:       http://localhost:${config.port}`);
       console.log(`  Organization:    ${config.orgType}`);
       console.log(`  Channel:         ${config.channelName}`);
       console.log(`  Chaincode:       ${config.chaincodeName}`);

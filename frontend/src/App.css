@@ -63,6 +63,8 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
   position: relative;
+  min-height: 500px;
+  height: 100%;
 }
 
 .map-wrapper::before {
@@ -133,6 +135,17 @@
 
 /* Mission Sidebar */
 .mission-sidebar {
+  width: 380px;
+  min-width: 380px;
+  height: 100%;
+  background: rgba(10, 10, 20, 0.95);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Route Planning Sidebar */
+.route-planning-sidebar {
   width: 380px;
   min-width: 380px;
   height: 100%;

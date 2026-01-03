@@ -2,9 +2,11 @@
 // Discrete segment-by-segment movement simulation for emergency vehicles
 
 import { broadcastMessage } from '../realtime/websocket';
+import { emitVehiclePosition } from '../realtime/socketio';
 import { completeMission as completeMissionChaincode } from '../fabric/mission.service';
 import { occupySegment, releaseSegment } from '../fabric/segment.service';
 import * as couchdb from '../couchdb';
+import { getManhattanNodes, getManhattanSegments } from '../map/manhattan';
 import type { Mission, WsMessage } from '../../models/types';
 
 // Simulation configuration
@@ -540,15 +542,42 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Broadcast vehicle position update via WebSocket
+ * Calculate lat/lon position from vehicle state
+ */
+function calculateVehiclePosition(vehicle: VehicleSimState): { lat: number; lon: number } | null {
+  const currentSegmentId = vehicle.path[vehicle.currentSegmentIndex];
+  if (!currentSegmentId) return null;
+
+  const segments = getManhattanSegments();
+  const nodes = getManhattanNodes();
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  const segment = segments.find(s => s.id === currentSegmentId);
+  if (!segment) return null;
+
+  const fromNode = nodeMap.get(segment.from);
+  const toNode = nodeMap.get(segment.to);
+  if (!fromNode || !toNode) return null;
+
+  // Interpolate position based on progress
+  const progress = vehicle.progress / 100;
+  const lat = fromNode.lat + (toNode.lat - fromNode.lat) * progress;
+  const lon = fromNode.lon + (toNode.lon - fromNode.lon) * progress;
+
+  return { lat, lon };
+}
+
+/**
+ * Broadcast vehicle position update via WebSocket and Socket.IO
  */
 function broadcastVehiclePosition(vehicle: VehicleSimState): void {
-  const message: WsMessage = {
-    type: 'VEHICLE_POSITION',
-    payload: {
+  const currentSegmentId = vehicle.path[vehicle.currentSegmentIndex] || null;
+  const position = calculateVehiclePosition(vehicle);
+
+  const positionData = {
       vehicleId: vehicle.vehicleId,
       missionId: vehicle.missionId,
-      currentSegment: vehicle.path[vehicle.currentSegmentIndex] || null,
+    currentSegment: currentSegmentId,
       previousSegment: vehicle.currentSegmentIndex > 0 ? vehicle.path[vehicle.currentSegmentIndex - 1] : null,
       nextSegment: vehicle.currentSegmentIndex < vehicle.path.length - 1 ? vehicle.path[vehicle.currentSegmentIndex + 1] : null,
       progress: Math.round(vehicle.progress),
@@ -556,11 +585,54 @@ function broadcastVehiclePosition(vehicle: VehicleSimState): void {
       totalSegments: vehicle.path.length,
       status: vehicle.status,
       orgType: vehicle.orgType,
-    },
-    timestamp: Date.now(),
+    lat: position?.lat,
+    lon: position?.lon,
+    heading: position ? calculateHeading(vehicle) : undefined,
+    speed: 50, // Default emergency vehicle speed in km/h
   };
 
+  // Broadcast via WebSocket (legacy)
+  const message: WsMessage = {
+    type: 'VEHICLE_POSITION',
+    payload: positionData,
+    timestamp: Date.now(),
+  };
   broadcastMessage(message);
+
+  // Emit via Socket.IO (new)
+  if (position) {
+    emitVehiclePosition(positionData as any);
+  }
+}
+
+/**
+ * Calculate vehicle heading (direction of travel)
+ */
+function calculateHeading(vehicle: VehicleSimState): number {
+  const currentSegmentId = vehicle.path[vehicle.currentSegmentIndex];
+  if (!currentSegmentId) return 0;
+
+  const segments = getManhattanSegments();
+  const nodes = getManhattanNodes();
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  const segment = segments.find(s => s.id === currentSegmentId);
+  if (!segment) return 0;
+
+  const fromNode = nodeMap.get(segment.from);
+  const toNode = nodeMap.get(segment.to);
+  if (!fromNode || !toNode) return 0;
+
+  // Calculate bearing (heading) in degrees
+  const lat1 = fromNode.lat * Math.PI / 180;
+  const lat2 = toNode.lat * Math.PI / 180;
+  const dLon = (toNode.lon - fromNode.lon) * Math.PI / 180;
+
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+
+  const bearing = Math.atan2(y, x) * 180 / Math.PI;
+  return (bearing + 360) % 360; // Normalize to 0-360
 }
 
 /**

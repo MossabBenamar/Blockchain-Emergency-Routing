@@ -63,7 +63,8 @@ async function newSigner(orgType: 'medical' | 'police' = 'medical'): Promise<Sig
     throw new Error(`No private key file found in ${keyDir}`);
   }
   
-  const privateKeyPem = fs.readFileSync(path.join(keyDir, keyFile));
+  const keyFilePath = path.join(keyDir, keyFile);
+  const privateKeyPem = fs.readFileSync(keyFilePath);
   const privateKey = crypto.createPrivateKey(privateKeyPem);
   
   return signers.newPrivateKeySigner(privateKey);

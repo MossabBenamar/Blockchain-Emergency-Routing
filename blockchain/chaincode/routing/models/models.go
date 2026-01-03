@@ -12,12 +12,14 @@ type Vehicle struct {
 	RegisteredAt  int64  `json:"registeredAt"`  // Unix timestamp
 }
 
-// Segment represents a road segment that can be reserved
+// Segment represents a road segment reservation state
+// NOTE: Map topology (fromNode, toNode, geometry) is stored in PostgreSQL, NOT in blockchain
+// The blockchain only stores reservation state for conflict resolution and audit trail
 type Segment struct {
 	DocType       string `json:"docType"`       // "segment" - for CouchDB queries
-	SegmentID     string `json:"segmentId"`     // Unique identifier (e.g., "S1")
-	FromNode      string `json:"fromNode"`      // Origin node ID
-	ToNode        string `json:"toNode"`        // Destination node ID
+	SegmentID     string `json:"segmentId"`     // Unique identifier (e.g., "SEG_H01_I01")
+	FromNode      string `json:"fromNode"`      // DEPRECATED: Not used, kept for backward compatibility
+	ToNode        string `json:"toNode"`        // DEPRECATED: Not used, kept for backward compatibility
 	Status        string `json:"status"`        // "free", "reserved", "occupied"
 	ReservedBy    string `json:"reservedBy"`    // VehicleID if reserved (empty string if free)
 	MissionID     string `json:"missionId"`     // MissionID if reserved (empty string if free)

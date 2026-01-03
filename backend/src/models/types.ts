@@ -47,6 +47,17 @@ export interface ActivateMissionRequest {
 }
 
 export interface RouteRequest {
+  // Node-based routing (legacy)
+  originNode?: string;
+  destNode?: string;
+  vehicleId?: string;
+  missionId?: string;
+  
+  // Coordinate-based routing (new - for OSRM)
+  originLat?: number;
+  originLon?: number;
+  destLat?: number;
+  destLon?: number;
   originNode: string;
   destNode: string;
   vehicleId: string;
@@ -111,8 +122,10 @@ export interface Conflict {
 // Map types
 export interface MapNode {
   id: string;
-  x: number;
-  y: number;
+  x?: number;  // Grid coordinates (legacy)
+  y?: number;  // Grid coordinates (legacy)
+  lat?: number; // Latitude (for real maps)
+  lon?: number; // Longitude (for real maps)
   label: string | null;
   type: 'intersection' | 'poi';
   orgType?: string;
@@ -123,15 +136,16 @@ export interface MapSegment {
   from: string;
   to: string;
   weight: number;
-  direction: 'horizontal' | 'vertical';
+  direction?: 'horizontal' | 'vertical'; // Optional for real maps
   bidirectional: boolean;
+  geometry?: Array<[number, number]>; // Route geometry as [lat, lon] coordinates
 }
 
 export interface MapData {
   name: string;
   description: string;
   version: string;
-  gridSize: {
+  gridSize?: {
     rows: number;
     cols: number;
   };
@@ -143,6 +157,14 @@ export interface MapData {
     type: string;
     orgType?: string;
   }>;
+  bounds?: {
+    north: number;
+    south: number;
+    east: number;
+    west: number;
+  };
+  center?: [number, number]; // [lat, lon]
+  zoom?: number;
 }
 
 // API Response types

@@ -303,9 +303,12 @@ sleep 10
 ./blockchain/network/scripts/deploy-ccaas.sh
 
 # 4. Start backends and frontend (in separate terminals)
-# Terminal 1: cd backend && ORG_TYPE=medical PORT=3001 WS_PORT=3002 npm run dev
-# Terminal 2: cd backend && ORG_TYPE=police PORT=3003 WS_PORT=3004 MSP_ID=PoliceMSP PEER_ENDPOINT=localhost:9051 PEER_HOST_ALIAS=peer0.police.emergency.net npm run dev
-# Terminal 3: cd frontend && npm run dev
+## Terminal 1: 
+cd backend && ORG_TYPE=medical PORT=3001 WS_PORT=3002 npm run dev
+## Terminal 2: 
+cd backend && ORG_TYPE=police PORT=3003 WS_PORT=3004 MSP_ID=PoliceMSP PEER_ENDPOINT=localhost:9051 PEER_HOST_ALIAS=peer0.police.emergency.net npm run dev
+## Terminal 3: 
+cd frontend && npm run dev
 ```
 
 ---

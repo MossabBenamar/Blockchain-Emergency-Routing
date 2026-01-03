@@ -210,7 +210,7 @@ router.post('/:missionId/activate', asyncHandler(async (req: Request, res: Respo
     console.log(`[ConflictCheck] Mission ${missionId} blocked on segments: ${blockedSegments.join(', ')}`);
 
     // Try to find alternative route avoiding blocked segments
-    const alternativeRoute = routingService.calculateRoute(
+    const alternativeRoute = await routingService.calculateRoute(
       pendingMission.originNode,
       pendingMission.destNode,
       pendingMission.priorityLevel,
@@ -411,14 +411,85 @@ router.get('/vehicle/:vehicleId', asyncHandler(async (req: Request, res: Respons
 /**
  * POST /api/routes/calculate
  * Calculate optimal route for a mission
+ * Supports both node-based and coordinate-based routing
  */
 router.post('/routes/calculate', asyncHandler(async (req: Request, res: Response) => {
   const request: RouteRequest = req.body;
 
+  // Check if using coordinate-based routing (new method)
+  if (request.originLat !== undefined && request.originLon !== undefined &&
+      request.destLat !== undefined && request.destLon !== undefined) {
+    // Coordinate-based routing using OSRM
+    const osrmService = (await import('../../services/osrm/osrmService')).osrmService;
+    
+    const osrmResult = await osrmService.calculateRoute(
+      request.originLat,
+      request.originLon,
+      request.destLat,
+      request.destLon,
+      { profile: 'driving' }
+    );
+
+    if (!osrmResult.success) {
+      res.status(400).json({
+        success: false,
+        error: osrmResult.error || 'Failed to calculate route with OSRM',
+      });
+      return;
+    }
+
+    // Store route in PostgreSQL if available
+    try {
+      const postgres = await import('../../services/database/postgres');
+      const pool = postgres.getPool();
+      if (pool) {
+        const routeId = `ROUTE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        await postgres.storeRoute({
+          routeId,
+          missionId: request.missionId,
+          vehicleId: request.vehicleId,
+          originLat: request.originLat,
+          originLon: request.originLon,
+          destLat: request.destLat,
+          destLon: request.destLon,
+          geometry: osrmResult.geometry,
+          distanceMeters: osrmResult.distance,
+          durationSeconds: osrmResult.duration,
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to store route in PostgreSQL:', error);
+      // Continue without storing
+    }
+
+    res.json({
+      success: true,
+      data: {
+        path: [], // No segment path for OSRM routes
+        nodePath: [], // No node path for coordinate-based routes
+        totalWeight: osrmResult.distanceKm,
+        estimatedTime: osrmResult.duration,
+        geometry: osrmResult.geometry,
+        distance: osrmResult.distance,
+        distanceKm: osrmResult.distanceKm,
+        duration: osrmResult.duration,
+        durationMinutes: osrmResult.durationMinutes,
+        analysis: {
+          freeSegments: 0,
+          reservedSegments: 0,
+          occupiedSegments: 0,
+          potentialConflicts: [],
+        },
+      },
+    });
+    return;
+  }
+
+  // Legacy node-based routing (existing method)
   if (!request.originNode || !request.destNode || !request.vehicleId) {
     res.status(400).json({
       success: false,
-      error: 'Missing required fields: originNode, destNode, vehicleId',
+      error: 'Missing required fields: either (originLat, originLon, destLat, destLon) or (originNode, destNode, vehicleId)',
     });
     return;
   }
@@ -442,7 +513,7 @@ router.post('/routes/calculate', asyncHandler(async (req: Request, res: Response
   }
 
   // Calculate route
-  const result = routingService.calculateRoute(
+  const result = await routingService.calculateRoute(
     request.originNode,
     request.destNode,
     vehiclePriority,
@@ -467,6 +538,7 @@ router.post('/routes/calculate', asyncHandler(async (req: Request, res: Response
       nodePath: result.nodePath,
       totalWeight: result.totalWeight,
       estimatedTime: result.estimatedTime,
+      geometry: result.geometry,
       analysis,
     },
   });
@@ -508,7 +580,7 @@ router.post('/routes/alternatives', asyncHandler(async (req: Request, res: Respo
   // If no primary path provided, calculate it first
   let primary = primaryPath;
   if (!primary) {
-    const primaryResult = routingService.calculateRoute(
+    const primaryResult = await routingService.calculateRoute(
       originNode,
       destNode,
       vehiclePriority,
@@ -518,7 +590,7 @@ router.post('/routes/alternatives', asyncHandler(async (req: Request, res: Respo
   }
 
   // Find alternatives
-  const alternatives = routingService.findAlternativeRoutes(
+  const alternatives = await routingService.findAlternativeRoutes(
     originNode,
     destNode,
     vehiclePriority,
@@ -576,7 +648,7 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
   }
 
   // 3. Calculate optimal route
-  let routeResult = routingService.calculateRoute(
+  let routeResult = await routingService.calculateRoute(
     originNode,
     destNode,
     vehiclePriority,
@@ -620,7 +692,7 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
   if (blockedSegments.length > 0) {
     console.log(`[ConflictCheck] New mission for ${vehicleId} blocked on: ${blockedSegments.join(', ')}`);
 
-    const alternativeRoute = routingService.calculateRoute(
+    const alternativeRoute = await routingService.calculateRoute(
       originNode,
       destNode,
       vehiclePriority,

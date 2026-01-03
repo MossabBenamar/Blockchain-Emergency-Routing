@@ -200,7 +200,7 @@ export async function rerouteMission(
         }
 
         // Calculate new route excluding the contested segments
-        const newRoute = routingService.calculateRoute(
+        const newRoute = await routingService.calculateRoute(
             startNode,
             mission.destNode,
             mission.priorityLevel,

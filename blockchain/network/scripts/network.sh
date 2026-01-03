@@ -98,7 +98,31 @@ generate_crypto() {
             cryptogen generate --config=/crypto-config/crypto-config.yaml --output=/output
     fi
     
+    # Fix permissions on generated crypto files
+    fix_crypto_permissions
+    
     print_success "Crypto material generated"
+}
+
+fix_crypto_permissions() {
+    print_info "Fixing permissions on crypto material files..."
+    
+    # Fix permissions for all private key files (*_sk)
+    if [ -d "$CRYPTO_DIR" ]; then
+        find "$CRYPTO_DIR" -type f -name "*_sk" -exec chmod 644 {} \; 2>/dev/null || true
+        find "$CRYPTO_DIR" -type f -name "*.key" -exec chmod 644 {} \; 2>/dev/null || true
+        
+        # Also fix permissions for certificate files
+        find "$CRYPTO_DIR" -type f -name "*.pem" -exec chmod 644 {} \; 2>/dev/null || true
+        find "$CRYPTO_DIR" -type f -name "*.crt" -exec chmod 644 {} \; 2>/dev/null || true
+        
+        # Fix directory permissions
+        find "$CRYPTO_DIR" -type d -exec chmod 755 {} \; 2>/dev/null || true
+        
+        print_success "Permissions fixed"
+    else
+        print_warning "Crypto directory not found, skipping permission fix"
+    fi
 }
 
 # Generate channel artifacts for Fabric 2.5+ (no system channel)

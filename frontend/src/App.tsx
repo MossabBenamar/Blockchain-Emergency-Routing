@@ -2,15 +2,17 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Header } from './components/Header/Header';
-import { GridMap } from './components/Map/GridMap';
+import { LeafletMap } from './components/Map/LeafletMap';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { MissionPanel } from './components/Mission/MissionPanel';
 import { SimulationControls } from './components/Simulation/SimulationControls';
 import { MissionHistory } from './components/History/MissionHistory';
 import { ConflictAlert } from './components/Conflict/ConflictAlert';
 import { useWebSocket, useWebSocketEvent } from './hooks/useWebSocket';
+import { useSocketIO, useVehiclePositions } from './hooks/useSocketIO';
 import api from './services/api';
 import wsService from './services/websocket';
+import socketIOService from './services/socketio';
 import type { Node, Segment, Vehicle, OrgType, Mission, VehiclePosition, SimulationStatus } from './types';
 import './App.css';
 
@@ -109,7 +111,14 @@ function App() {
   // Mission state
   const [activeMissions, setActiveMissions] = useState<Mission[]>([]);
   const [highlightedRoute, setHighlightedRoute] = useState<string[]>([]);
+  const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
   const [showMissionPanel, setShowMissionPanel] = useState(false);
+  
+  // Route planning state
+  const [showRoutePlanningPanel, setShowRoutePlanningPanel] = useState(false);
+  const [startPoint, setStartPoint] = useState<[number, number] | null>(null);
+  const [endPoint, setEndPoint] = useState<[number, number] | null>(null);
+  const [routePlanningMode, setRoutePlanningMode] = useState(false);
 
   // Simulation state (Phase 5)
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus | null>(null);
@@ -119,6 +128,22 @@ function App() {
 
   // WebSocket connection
   const { isConnected } = useWebSocket();
+  
+  // Socket.IO connection for real-time vehicle tracking
+  const { isConnected: isSocketIOConnected } = useSocketIO();
+  const socketIOPositions = useVehiclePositions();
+  
+  // Merge Socket.IO positions with existing vehicle positions
+  useEffect(() => {
+    if (socketIOPositions.length > 0) {
+      setVehiclePositions(socketIOPositions);
+    }
+  }, [socketIOPositions]);
+  
+  // Update Socket.IO organization when org changes
+  useEffect(() => {
+    socketIOService.setOrganization(currentOrg);
+  }, [currentOrg]);
 
   // Fetch initial data
   const fetchData = useCallback(async () => {
@@ -129,6 +154,7 @@ function App() {
       // Fetch map data (nodes and static segments with geometry)
       const mapResponse = await api.getMapData();
       if (mapResponse.success) {
+        // Use Manhattan data from backend
         setNodes(mapResponse.data.nodes);
 
         // Get static segment geometry from map data
@@ -395,12 +421,41 @@ function App() {
     fetchData();
   }, [fetchData]);
 
-  const handleRouteCalculated = useCallback((path: string[]) => {
+  const handleRouteCalculated = useCallback((path: string[], routeResult?: any) => {
     setHighlightedRoute(path);
-  }, []);
+    // Use geometry from route result if available, otherwise calculate from segments
+    if (routeResult?.geometry && routeResult.geometry.length > 0) {
+      setRouteGeometry(routeResult.geometry);
+    } else {
+      // Fallback: Calculate route geometry from segments
+      const geometry: Array<[number, number]> = [];
+      path.forEach((segmentId) => {
+        const segment = segments.find(s => s.id === segmentId);
+        if (segment) {
+          // Use segment geometry if available
+          if (segment.geometry && segment.geometry.length > 0) {
+            geometry.push(...segment.geometry);
+          } else {
+            // Fallback to node coordinates
+            const fromNode = nodes.find(n => n.id === segment.from);
+            const toNode = nodes.find(n => n.id === segment.to);
+            if (fromNode?.lat !== undefined && fromNode?.lon !== undefined) {
+              geometry.push([fromNode.lat, fromNode.lon]);
+            }
+            if (toNode?.lat !== undefined && toNode?.lon !== undefined && 
+                !geometry.some(([lat, lon]) => lat === toNode.lat && lon === toNode.lon)) {
+              geometry.push([toNode.lat, toNode.lon]);
+            }
+          }
+        }
+      });
+      setRouteGeometry(geometry);
+    }
+  }, [segments, nodes]);
 
   const handleClearRoute = useCallback(() => {
     setHighlightedRoute([]);
+    setRouteGeometry([]);
   }, []);
 
   // Phase 5: Simulation handlers
@@ -561,16 +616,35 @@ function App() {
           )}
 
           <div className="map-wrapper">
-            <GridMap
+            <LeafletMap
               nodes={nodes}
               segments={segments}
               vehicles={vehicles}
               selectedSegment={selectedSegmentId}
               onSegmentClick={handleSegmentClick}
+              onMapClick={(lat, lon) => {
+                if (routePlanningMode) {
+                  if (!startPoint) {
+                    setStartPoint([lat, lon]);
+                  } else if (!endPoint) {
+                    setEndPoint([lat, lon]);
+                  } else {
+                    // Replace end point
+                    setEndPoint([lat, lon]);
+                  }
+                }
+              }}
               currentOrg={currentOrg}
               highlightedRoute={highlightedRoute}
               activeMissions={activeMissions}
               vehiclePositions={vehiclePositions}
+              routeGeometry={routeGeometry.length > 0 ? routeGeometry : undefined}
+              startPoint={startPoint}
+              endPoint={endPoint}
+              routePlanningMode={routePlanningMode}
+              center={nodes.length > 0 && nodes[0].lat !== undefined ? 
+                [nodes[0].lat, nodes[0].lon!] : [40.7589, -73.9851]}
+              zoom={13}
             />
           </div>
 
@@ -587,10 +661,29 @@ function App() {
                 {activeMissions.filter(m => m.orgType === currentOrg).length} active
               </span>
             </div>
-            <div className="info-card clickable" onClick={() => setShowMissionPanel(!showMissionPanel)}>
+            <div className="info-card clickable" onClick={() => {
+              setShowMissionPanel(!showMissionPanel);
+              if (!showMissionPanel) {
+                setShowRoutePlanningPanel(false);
+                setShowHistoryPanel(false);
+              }
+            }}>
               <span className="info-label">Mission Control</span>
               <span className="info-value mission-toggle">
                 {showMissionPanel ? '📋 Hide Panel' : '🎯 Open Panel'}
+              </span>
+            </div>
+            <div className="info-card clickable" onClick={() => {
+              setShowRoutePlanningPanel(!showRoutePlanningPanel);
+              setRoutePlanningMode(!showRoutePlanningPanel);
+              if (!showRoutePlanningPanel) {
+                setShowMissionPanel(false);
+                setShowHistoryPanel(false);
+              }
+            }}>
+              <span className="info-label">Route Planning</span>
+              <span className="info-value route-planning-toggle">
+                {showRoutePlanningPanel ? '🗺️ Hide' : '🗺️ Plan Route'}
               </span>
             </div>
             <div className="info-card clickable" onClick={() => {
@@ -633,6 +726,39 @@ function App() {
               }}
             />
           </aside>
+        ) : showRoutePlanningPanel ? (
+          <aside className="route-planning-sidebar">
+            <RoutePlanningPanel
+              onRouteCalculated={(route) => {
+                if (route.geometry) {
+                  setRouteGeometry(route.geometry);
+                }
+              }}
+              onClearRoute={() => {
+                setRouteGeometry([]);
+                setStartPoint(null);
+                setEndPoint(null);
+              }}
+              isLoading={isLoading}
+              setIsLoading={setIsLoading}
+              onStartPointSelect={(lat, lon) => {
+                if (lat === 0 && lon === 0) {
+                  setStartPoint(null);
+                } else {
+                  setStartPoint([lat, lon]);
+                }
+              }}
+              onEndPointSelect={(lat, lon) => {
+                if (lat === 0 && lon === 0) {
+                  setEndPoint(null);
+                } else {
+                  setEndPoint([lat, lon]);
+                }
+              }}
+              startPoint={startPoint}
+              endPoint={endPoint}
+            />
+          </aside>
         ) : showSimulationPanel ? (
           <aside className="simulation-sidebar">
             <SimulationControls
@@ -654,6 +780,7 @@ function App() {
               vehicles={vehicles}
               currentOrg={currentOrg}
               activeMissions={activeMissions}
+              vehiclePositions={vehiclePositions}
               onMissionCreated={handleMissionCreated}
               onMissionCompleted={handleMissionCompleted}
               onRouteCalculated={handleRouteCalculated}

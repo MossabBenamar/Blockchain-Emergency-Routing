@@ -2,8 +2,10 @@
 
 export interface Node {
   id: string;
-  x: number;
-  y: number;
+  x?: number;  // Grid coordinates (legacy)
+  y?: number;  // Grid coordinates (legacy)
+  lat?: number; // Latitude (for real maps)
+  lon?: number; // Longitude (for real maps)
   label: string | null;
   type: 'poi' | 'intersection';
   orgType?: 'medical' | 'police';
@@ -14,7 +16,7 @@ export interface Segment {
   from: string;
   to: string;
   weight: number;
-  direction: 'horizontal' | 'vertical';
+  direction?: 'horizontal' | 'vertical'; // Optional for real maps
   bidirectional: boolean;
   status?: 'free' | 'reserved' | 'occupied';
   reservedBy?: {
@@ -23,6 +25,7 @@ export interface Segment {
     orgType: string;
     priorityLevel: number;
   };
+  geometry?: Array<[number, number]>; // Array of [lat, lon] coordinates for route geometry
 }
 
 export interface Vehicle {
@@ -104,6 +107,11 @@ export interface RouteResult {
   nodePath: string[];
   totalWeight: number;
   estimatedTime: number;
+  geometry?: Array<[number, number]>; // Route geometry as [lat, lon] coordinates
+  distance?: number; // Distance in meters
+  distanceKm?: number; // Distance in kilometers
+  duration?: number; // Duration in seconds
+  durationMinutes?: number; // Duration in minutes
   analysis?: {
     freeSegments: number;
     reservedSegments: number;
@@ -128,6 +136,10 @@ export interface VehiclePosition {
   totalSegments: number;
   status: 'idle' | 'moving' | 'paused' | 'arrived' | 'aborted';
   orgType: OrgType;
+  lat?: number; // Real-time GPS latitude
+  lon?: number; // Real-time GPS longitude
+  heading?: number; // Vehicle heading in degrees
+  speed?: number; // Speed in km/h
 }
 
 export interface SimulationStatus {

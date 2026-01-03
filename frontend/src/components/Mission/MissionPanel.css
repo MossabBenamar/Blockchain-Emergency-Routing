@@ -44,6 +44,15 @@
   border: 1px solid var(--police-primary, #4dabf7);
 }
 
+/* Readonly Input */
+.readonly-input {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: not-allowed;
+  font-style: italic;
+}
+
 /* Error Message */
 .error-message {
   display: flex;

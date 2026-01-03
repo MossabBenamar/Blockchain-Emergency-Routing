@@ -69,7 +69,7 @@ export const GridMap: React.FC<GridMapProps> = ({
     return activeMissions.find(m => m.path?.includes(segmentId));
   };
 
-  // Get segment color based on status
+  // Get segment color based on status - dark red for reserved/occupied segments
   const getSegmentColor = (segment: Segment) => {
     // Selected segment has highest priority
     if (selectedSegment === segment.id) {
@@ -81,20 +81,8 @@ export const GridMap: React.FC<GridMapProps> = ({
       return '#ffd43b';
     }
     
-    switch (segment.status) {
-      case 'reserved':
-        if (segment.reservedBy?.orgType === 'medical') {
-          return '#ff6b6b';
-        } else if (segment.reservedBy?.orgType === 'police') {
-          return '#4dabf7';
-        }
-        return '#ffd43b';
-      case 'occupied':
-        return '#ff4757';
-      case 'free':
-      default:
-        return '#51cf66';
-    }
+    // Dark red for reserved/occupied segments
+    return '#8b0000';
   };
 
   // Get segment stroke dash array for different states
@@ -188,9 +176,9 @@ export const GridMap: React.FC<GridMapProps> = ({
           rx={8}
         />
 
-        {/* Render segments */}
+        {/* Render segments - only reserved/occupied segments */}
         <g className="segments-layer">
-          {segments.map((segment) => {
+          {segments.filter(seg => seg.status === 'reserved' || seg.status === 'occupied').map((segment) => {
             const fromCoords = getNodeCoords(segment.from);
             const toCoords = getNodeCoords(segment.to);
             const color = getSegmentColor(segment);
@@ -218,20 +206,19 @@ export const GridMap: React.FC<GridMapProps> = ({
                   strokeLinecap="round"
                 />
 
-                {/* Glow effect for selected, reserved, or highlighted segments */}
-                {(segment.status !== 'free' || isSelected || isHighlighted) && (
-                  <line
-                    x1={fromCoords.x}
-                    y1={fromCoords.y}
-                    x2={toCoords.x}
-                    y2={toCoords.y}
-                    stroke={color}
-                    strokeWidth={width + 10}
-                    strokeLinecap="round"
-                    opacity={isHighlighted ? 0.5 : 0.3}
-                    className={`segment-glow ${isHighlighted ? 'route-glow' : ''}`}
-                  />
-                )}
+                {/* Glow effect for reserved/occupied segments - dark red glow */}
+                <line
+                  x1={fromCoords.x}
+                  y1={fromCoords.y}
+                  x2={toCoords.x}
+                  y2={toCoords.y}
+                  stroke="#8b0000"
+                  strokeWidth={width + 10}
+                  strokeLinecap="round"
+                  opacity={isHighlighted ? 0.5 : 0.3}
+                  className={`segment-glow ${isHighlighted ? 'route-glow' : ''}`}
+                  filter="url(#glow)"
+                />
                 
                 {/* Main segment line */}
                 <line

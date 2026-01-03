@@ -8,12 +8,16 @@
  */
 
 import { Segment as BlockchainSegment } from '../../models/types';
+import { getManhattanNodes, getManhattanSegments } from '../map/manhattan';
+import { osrmService } from '../osrm/osrmService';
 
 // Graph data structures
 interface Node {
   id: string;
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
+  lat?: number;
+  lon?: number;
 }
 
 interface Edge {
@@ -22,6 +26,7 @@ interface Edge {
   to: string;
   weight: number;
   bidirectional: boolean;
+  geometry?: Array<[number, number]>;
 }
 
 interface Graph {
@@ -34,63 +39,24 @@ interface RouteResult {
   path: string[];         // Array of segment IDs
   nodePath: string[];     // Array of node IDs
   totalWeight: number;
-  estimatedTime: number;  // In seconds (assuming 1 weight = 30 seconds)
+  estimatedTime: number;  // In seconds
+  geometry?: Array<[number, number]>; // Route geometry
   error?: string;
 }
 
-// 5x5 Grid Map Data (hardcoded for now, could be loaded from file)
-const MAP_NODES: Node[] = [
-  { id: 'N1', x: 0, y: 0 }, { id: 'N2', x: 1, y: 0 }, { id: 'N3', x: 2, y: 0 }, { id: 'N4', x: 3, y: 0 }, { id: 'N5', x: 4, y: 0 },
-  { id: 'N6', x: 0, y: 1 }, { id: 'N7', x: 1, y: 1 }, { id: 'N8', x: 2, y: 1 }, { id: 'N9', x: 3, y: 1 }, { id: 'N10', x: 4, y: 1 },
-  { id: 'N11', x: 0, y: 2 }, { id: 'N12', x: 1, y: 2 }, { id: 'N13', x: 2, y: 2 }, { id: 'N14', x: 3, y: 2 }, { id: 'N15', x: 4, y: 2 },
-  { id: 'N16', x: 0, y: 3 }, { id: 'N17', x: 1, y: 3 }, { id: 'N18', x: 2, y: 3 }, { id: 'N19', x: 3, y: 3 }, { id: 'N20', x: 4, y: 3 },
-  { id: 'N21', x: 0, y: 4 }, { id: 'N22', x: 1, y: 4 }, { id: 'N23', x: 2, y: 4 }, { id: 'N24', x: 3, y: 4 }, { id: 'N25', x: 4, y: 4 },
-];
+// Load Manhattan map data
+function getMapNodes(): Node[] {
+  const manhattanNodes = getManhattanNodes();
+  return manhattanNodes.map(node => ({
+    id: node.id,
+    lat: node.lat,
+    lon: node.lon,
+  }));
+}
 
-const MAP_EDGES: Edge[] = [
-  // Horizontal segments (Row 1 to Row 5)
-  { id: 'S1', from: 'N1', to: 'N2', weight: 1, bidirectional: true },
-  { id: 'S2', from: 'N2', to: 'N3', weight: 1, bidirectional: true },
-  { id: 'S3', from: 'N3', to: 'N4', weight: 1, bidirectional: true },
-  { id: 'S4', from: 'N4', to: 'N5', weight: 1, bidirectional: true },
-  { id: 'S5', from: 'N6', to: 'N7', weight: 1, bidirectional: true },
-  { id: 'S6', from: 'N7', to: 'N8', weight: 1, bidirectional: true },
-  { id: 'S7', from: 'N8', to: 'N9', weight: 1, bidirectional: true },
-  { id: 'S8', from: 'N9', to: 'N10', weight: 1, bidirectional: true },
-  { id: 'S9', from: 'N11', to: 'N12', weight: 1, bidirectional: true },
-  { id: 'S10', from: 'N12', to: 'N13', weight: 1, bidirectional: true },
-  { id: 'S11', from: 'N13', to: 'N14', weight: 1, bidirectional: true },
-  { id: 'S12', from: 'N14', to: 'N15', weight: 1, bidirectional: true },
-  { id: 'S13', from: 'N16', to: 'N17', weight: 1, bidirectional: true },
-  { id: 'S14', from: 'N17', to: 'N18', weight: 1, bidirectional: true },
-  { id: 'S15', from: 'N18', to: 'N19', weight: 1, bidirectional: true },
-  { id: 'S16', from: 'N19', to: 'N20', weight: 1, bidirectional: true },
-  { id: 'S17', from: 'N21', to: 'N22', weight: 1, bidirectional: true },
-  { id: 'S18', from: 'N22', to: 'N23', weight: 1, bidirectional: true },
-  { id: 'S19', from: 'N23', to: 'N24', weight: 1, bidirectional: true },
-  { id: 'S20', from: 'N24', to: 'N25', weight: 1, bidirectional: true },
-  // Vertical segments (Column 1 to Column 5)
-  { id: 'S21', from: 'N1', to: 'N6', weight: 1, bidirectional: true },
-  { id: 'S22', from: 'N6', to: 'N11', weight: 1, bidirectional: true },
-  { id: 'S23', from: 'N11', to: 'N16', weight: 1, bidirectional: true },
-  { id: 'S24', from: 'N16', to: 'N21', weight: 1, bidirectional: true },
-  { id: 'S25', from: 'N2', to: 'N7', weight: 1, bidirectional: true },
-  { id: 'S26', from: 'N7', to: 'N12', weight: 1, bidirectional: true },
-  { id: 'S27', from: 'N12', to: 'N17', weight: 1, bidirectional: true },
-  { id: 'S28', from: 'N17', to: 'N22', weight: 1, bidirectional: true },
-  { id: 'S29', from: 'N3', to: 'N8', weight: 1, bidirectional: true },
-  { id: 'S30', from: 'N8', to: 'N13', weight: 1, bidirectional: true },
-  { id: 'S31', from: 'N13', to: 'N18', weight: 1, bidirectional: true },
-  { id: 'S32', from: 'N18', to: 'N23', weight: 1, bidirectional: true },
-  { id: 'S33', from: 'N4', to: 'N9', weight: 1, bidirectional: true },
-  { id: 'S34', from: 'N9', to: 'N14', weight: 1, bidirectional: true },
-  { id: 'S35', from: 'N14', to: 'N19', weight: 1, bidirectional: true },
-  { id: 'S36', from: 'N19', to: 'N24', weight: 1, bidirectional: true },
-  { id: 'S37', from: 'N5', to: 'N10', weight: 1, bidirectional: true },
-  { id: 'S38', from: 'N10', to: 'N15', weight: 1, bidirectional: true },
-  { id: 'S39', from: 'N15', to: 'N20', weight: 1, bidirectional: true },
-  { id: 'S40', from: 'N20', to: 'N25', weight: 1, bidirectional: true },
-];
+function getMapEdges(): Edge[] {
+  return getManhattanSegments();
+}
 
 // Build graph from map data
 function buildGraph(): Graph {
@@ -98,6 +64,9 @@ function buildGraph(): Graph {
     nodes: new Map(),
     adjacency: new Map(),
   };
+
+  const MAP_NODES = getMapNodes();
+  const MAP_EDGES = getMapEdges();
 
   // Add nodes
   for (const node of MAP_NODES) {
@@ -222,6 +191,7 @@ function calculateEdgeWeight(
 
 // Get segment connecting two nodes
 function getSegmentBetweenNodes(fromNode: string, toNode: string): string | undefined {
+  const MAP_EDGES = getMapEdges();
   for (const edge of MAP_EDGES) {
     if ((edge.from === fromNode && edge.to === toNode) ||
         (edge.bidirectional && edge.from === toNode && edge.to === fromNode)) {
@@ -241,13 +211,13 @@ function getSegmentBetweenNodes(fromNode: string, toNode: string): string | unde
  * @param excludeSegments Optional array of segment IDs to exclude (blocked)
  * @returns RouteResult with path and metadata
  */
-export function calculateRoute(
+export async function calculateRoute(
   originNode: string,
   destNode: string,
   vehiclePriority: number,
   segmentStatuses: Map<string, BlockchainSegment>,
   excludeSegments: string[] = []
-): RouteResult {
+): Promise<RouteResult> {
   const graph = buildGraph();
 
   // Validate nodes exist
@@ -342,15 +312,72 @@ export function calculateRoute(
   }
 
   const totalWeight = distances.get(destNode) || 0;
-  // Assuming each weight unit = 30 seconds travel time
-  const estimatedTime = totalWeight * 30;
+  // Convert weight (km) to time (seconds) - assuming average speed of 50 km/h for emergency vehicles
+  const estimatedTime = (totalWeight / 50) * 3600; // Convert hours to seconds
+
+  // Build route geometry using OSRM for actual road-following routes
+  let geometry: Array<[number, number]> | undefined;
+  const MAP_NODES = getMapNodes();
+  const nodeMap = new Map(MAP_NODES.map(n => [n.id, n]));
+
+  // Collect coordinates for all nodes in the path
+  const waypoints: Array<[number, number]> = [];
+  for (const nodeId of nodePath) {
+    const node = nodeMap.get(nodeId);
+    if (node?.lat !== undefined && node?.lon !== undefined) {
+      waypoints.push([node.lat, node.lon]);
+    }
+  }
+
+  // Use OSRM to get actual road-following geometry if we have at least 2 waypoints
+  if (waypoints.length >= 2) {
+    try {
+      const osrmResult = await osrmService.calculateRouteWithWaypoints(waypoints, { profile: 'driving' });
+      if (osrmResult.success && osrmResult.geometry.length > 0) {
+        geometry = osrmResult.geometry;
+      }
+    } catch (error) {
+      console.warn('OSRM route calculation failed, falling back to segment geometry:', error);
+    }
+  }
+
+  // Fallback to segment geometry if OSRM failed or is unavailable
+  if (!geometry || geometry.length === 0) {
+    const fallbackGeometry: Array<[number, number]> = [];
+    const MAP_EDGES = getMapEdges();
+
+    for (const segmentId of segmentPath) {
+      const segment = MAP_EDGES.find(e => e.id === segmentId);
+      if (segment) {
+        if (segment.geometry && segment.geometry.length > 0) {
+          fallbackGeometry.push(...segment.geometry);
+        } else {
+          const fromNode = nodeMap.get(segment.from);
+          const toNode = nodeMap.get(segment.to);
+          if (fromNode?.lat !== undefined && fromNode?.lon !== undefined) {
+            fallbackGeometry.push([fromNode.lat, fromNode.lon]);
+          }
+          if (toNode?.lat !== undefined && toNode?.lon !== undefined) {
+            fallbackGeometry.push([toNode.lat, toNode.lon]);
+          }
+        }
+      }
+    }
+
+    geometry = fallbackGeometry.filter((point, index) => {
+      if (index === 0) return true;
+      const prev = fallbackGeometry[index - 1];
+      return point[0] !== prev[0] || point[1] !== prev[1];
+    });
+  }
 
   return {
     success: true,
     path: segmentPath,
     nodePath,
     totalWeight,
-    estimatedTime,
+    estimatedTime: Math.round(estimatedTime),
+    geometry: geometry && geometry.length > 0 ? geometry : undefined,
   };
 }
 
@@ -365,14 +392,14 @@ export function calculateRoute(
  * @param numAlternatives Number of alternative routes to find
  * @returns Array of RouteResults
  */
-export function findAlternativeRoutes(
+export async function findAlternativeRoutes(
   originNode: string,
   destNode: string,
   vehiclePriority: number,
   segmentStatuses: Map<string, BlockchainSegment>,
   primaryPath: string[],
   numAlternatives: number = 3
-): RouteResult[] {
+): Promise<RouteResult[]> {
   const alternatives: RouteResult[] = [];
 
   // Find alternatives by excluding segments from primary path one by one
@@ -380,7 +407,7 @@ export function findAlternativeRoutes(
     // Exclude one segment from the primary path
     const excludeSegments = [primaryPath[i]];
     
-    const altRoute = calculateRoute(originNode, destNode, vehiclePriority, segmentStatuses, excludeSegments);
+    const altRoute = await calculateRoute(originNode, destNode, vehiclePriority, segmentStatuses, excludeSegments);
     
     // Only add if it's a valid, different route
     if (altRoute.success && altRoute.path.join(',') !== primaryPath.join(',')) {

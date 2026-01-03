@@ -207,9 +207,14 @@ class ApiService {
 
   // Routing endpoints
   async calculateRoute(data: {
-    originNode: string;
-    destNode: string;
-    vehicleId: string;
+    originNode?: string;
+    destNode?: string;
+    vehicleId?: string;
+    originLat?: number;
+    originLon?: number;
+    destLat?: number;
+    destLon?: number;
+    missionId?: string;
   }): Promise<ApiResponse<RouteResult>> {
     return this.request('/missions/routes/calculate', {
       method: 'POST',
