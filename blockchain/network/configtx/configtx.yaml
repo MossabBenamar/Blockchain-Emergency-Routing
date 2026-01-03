@@ -1,10 +1,13 @@
 # Emergency Routing System - Channel Configuration
-# Defines organizations, policies, and channel structure
+# Based on proven Fabric test-network configuration
+################################################################################
 
+################################################################################
+#
+#   Organizations
+#
+################################################################################
 Organizations:
-  # ============================================================
-  # Orderer Organization
-  # ============================================================
   - &OrdererOrg
     Name: OrdererOrg
     ID: OrdererMSP
@@ -22,9 +25,6 @@ Organizations:
     OrdererEndpoints:
       - orderer.emergency.net:7050
 
-  # ============================================================
-  # Medical Organization
-  # ============================================================
   - &Medical
     Name: MedicalMSP
     ID: MedicalMSP
@@ -46,9 +46,6 @@ Organizations:
       - Host: peer0.medical.emergency.net
         Port: 7051
 
-  # ============================================================
-  # Police Organization
-  # ============================================================
   - &Police
     Name: PoliceMSP
     ID: PoliceMSP
@@ -70,20 +67,26 @@ Organizations:
       - Host: peer0.police.emergency.net
         Port: 9051
 
-# ============================================================
-# Capabilities
-# ============================================================
+################################################################################
+#
+#   Capabilities
+#
+################################################################################
 Capabilities:
   Channel: &ChannelCapabilities
     V2_0: true
+
   Orderer: &OrdererCapabilities
     V2_0: true
+
   Application: &ApplicationCapabilities
     V2_5: true
 
-# ============================================================
-# Application Configuration
-# ============================================================
+################################################################################
+#
+#   Application
+#
+################################################################################
 Application: &ApplicationDefaults
   Organizations:
   Policies:
@@ -105,19 +108,23 @@ Application: &ApplicationDefaults
   Capabilities:
     <<: *ApplicationCapabilities
 
-# ============================================================
-# Orderer Configuration
-# ============================================================
+################################################################################
+#
+#   Orderer
+#
+################################################################################
 Orderer: &OrdererDefaults
   OrdererType: etcdraft
   Addresses:
     - orderer.emergency.net:7050
+  
   EtcdRaft:
     Consenters:
       - Host: orderer.emergency.net
         Port: 7050
         ClientTLSCert: ../organizations/ordererOrganizations/emergency.net/orderers/orderer.emergency.net/tls/server.crt
         ServerTLSCert: ../organizations/ordererOrganizations/emergency.net/orderers/orderer.emergency.net/tls/server.crt
+
   BatchTimeout: 2s
   BatchSize:
     MaxMessageCount: 10
@@ -138,9 +145,11 @@ Orderer: &OrdererDefaults
       Type: ImplicitMeta
       Rule: "ANY Writers"
 
-# ============================================================
-# Channel Configuration
-# ============================================================
+################################################################################
+#
+#   Channel
+#
+################################################################################
 Channel: &ChannelDefaults
   Policies:
     Readers:
@@ -155,11 +164,13 @@ Channel: &ChannelDefaults
   Capabilities:
     <<: *ChannelCapabilities
 
-# ============================================================
-# Profiles
-# ============================================================
+################################################################################
+#
+#   Profiles
+#
+################################################################################
 Profiles:
-  # Genesis block for orderer
+  # Profile for orderer genesis block
   EmergencyOrdererGenesis:
     <<: *ChannelDefaults
     Orderer:
@@ -173,19 +184,13 @@ Profiles:
           - *Medical
           - *Police
 
-  # Channel configuration for Fabric 2.5+ (no system channel)
+  # Profile for application channel
   EmergencyChannel:
     Consortium: EmergencyConsortium
     <<: *ChannelDefaults
-    Orderer:
-      <<: *OrdererDefaults
-      Organizations:
-        - *OrdererOrg
-      Capabilities: *OrdererCapabilities
     Application:
       <<: *ApplicationDefaults
       Organizations:
         - *Medical
         - *Police
       Capabilities: *ApplicationCapabilities
-

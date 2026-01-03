@@ -5,7 +5,7 @@
 #
 
 export PATH=${PWD}/../bin:$PATH
-export FABRIC_CFG_PATH=${PWD}/configtx
+export FABRIC_CFG_PATH=${PWD}/../configtx
 export VERBOSE=false
 
 # Print formatting
@@ -20,14 +20,14 @@ if [ "$MODE" == "up" ]; then
   print_info "Starting network setup..."
 elif [ "$MODE" == "down" ]; then
   print_info "Stopping network..."
-  docker-compose -f docker/docker-compose-net.yaml down --volumes --remove-orphans
+  docker-compose -f ../docker/docker-compose-net.yaml down --volumes --remove-orphans
   exit 0
 elif [ "$MODE" == "clean" ]; then
   print_info "Cleaning up..."
-  docker-compose -f docker/docker-compose-net.yaml down --volumes --remove-orphans
-  sudo rm -rf organizations/peerOrganizations
-  sudo rm -rf organizations/ordererOrganizations
-  sudo rm -rf channel-artifacts/*
+  docker-compose -f ../docker/docker-compose-net.yaml down --volumes --remove-orphans
+  sudo rm -rf ../organizations/peerOrganizations
+  sudo rm -rf ../organizations/ordererOrganizations
+  sudo rm -rf ../channel-artifacts/*
   print_success "Cleanup complete"
   exit 0
 elif [ "$MODE" == "restart" ]; then
@@ -45,22 +45,23 @@ fi
 # ====================================================
 # We do a light cleanup to ensure no ID conflicts, but we rely on the clean command for deep cleaning.
 print_info "Ensuring clean state for generation..."
-rm -rf channel-artifacts/*
+rm -rf ../channel-artifacts/*
 
 # ====================================================
-# 2. GENERATE CRYPTO
+# 2. CRYPTO MATERIAL GENERATION  
 # ====================================================
 print_info "Generating crypto material..."
 
-# Check which crypto config file exists based on your folder structure
-if [ -f "organizations/cryptogen/crypto-config.yaml" ]; then
-    cryptogen generate --config=./organizations/cryptogen/crypto-config.yaml --output="organizations"
+# Using test-network crypto structure but generating fresh with correct domain names
+print_info "Generating crypto material..."
+
+if [ -f "../organizations/cryptogen/crypto-config-medical.yaml" ]; then
+   cryptogen generate --config=../organizations/cryptogen/crypto-config-medical.yaml --output="../organizations"
+   cryptogen generate --config=../organizations/cryptogen/crypto-config-police.yaml --output="../organizations"
+   cryptogen generate --config=../organizations/cryptogen/crypto-config-orderer.yaml --output="../organizations"
 else
-    # Fallback/Safety check
-    print_info "Using split crypto configs..."
-    cryptogen generate --config=./organizations/cryptogen/crypto-config-org1.yaml --output="organizations"
-    cryptogen generate --config=./organizations/cryptogen/crypto-config-org2.yaml --output="organizations"
-    cryptogen generate --config=./organizations/cryptogen/crypto-config-orderer.yaml --output="organizations"
+   print_error "Crypto config files not found!"
+   exit 1
 fi
 
 # ====================================================
@@ -68,42 +69,60 @@ fi
 # ====================================================
 print_info "Generating network artifacts..."
 
-# 3a. Genesis Block (CRITICAL: This allows the Orderer to start)
+# 3a. Genesis Block (for Orderer bootstrap)
 print_info "Generating Orderer Genesis Block (Profile: EmergencyOrdererGenesis)..."
-configtxgen -profile EmergencyOrdererGenesis -channelID system-channel -outputBlock ./channel-artifacts/genesis.block
+configtxgen -profile EmergencyOrdererGenesis -channelID system-channel -outputBlock ../channel-artifacts/genesis.block
 
-# 3b. Channel Tx
-print_info "Generating Channel Creation Tx (Profile: EmergencyChannel)..."
-configtxgen -profile EmergencyChannel -outputCreateChannelTx ./channel-artifacts/emergency.tx -channelID emergency-channel
+# 3b. Channel Transaction
+print_info "Generating Channel Transaction (Profile: EmergencyChannel)..."
+configtxgen -profile EmergencyChannel -outputCreateChannelTx ../channel-artifacts/emergency.tx -channelID emergency-channel
 
 # ====================================================
 # 4. START NETWORK
 # ====================================================
 print_info "Starting containers..."
-# We only start the NET yaml. We do NOT start CAs.
-docker-compose -f docker/docker-compose-net.yaml up -d
+docker-compose -f ../docker/docker-compose-net.yaml up -d
 
-print_info "Waiting 5 seconds for Orderer to stabilize..."
-sleep 5
+print_info "Waiting 10 seconds for Orderer and peers to fully start..."
+sleep 10
+
+# Verify orderer is ready
+print_info "Verifying orderer readiness..."
+for i in {1..10}; do
+  if docker logs orderer.emergency.net 2>&1 | grep -q "Beginning to serve requests"; then
+    print_success "Orderer is ready"
+    break
+  fi
+  echo "Waiting for orderer... ($i/10)"
+  sleep 2
+done
 
 # ====================================================
-# 5. CREATE & JOIN CHANNEL
+# 5. JOIN CHANNEL (No channel create needed - genesis block already exists)
 # ====================================================
-print_info "Creating and joining channel..."
+print_info "Joining peers to channel..."
 
-# Define Variables
 CHANNEL_NAME="emergency-channel"
 ORDERER_CA="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/emergency.net/orderers/orderer.emergency.net/msp/tlscacerts/tlsca.emergency.net-cert.pem"
 
 # 5a. Create Channel
 print_info "Creating channel..."
-docker exec cli peer channel create -o orderer.emergency.net:7050 -c $CHANNEL_NAME \
+docker exec \
+    -e CORE_PEER_LOCALMSPID=MedicalMSP \
+    -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/medical.emergency.net/peers/peer0.medical.emergency.net/tls/ca.crt \
+    -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/medical.emergency.net/users/Admin@medical.emergency.net/msp \
+    -e CORE_PEER_ADDRESS=peer0.medical.emergency.net:7051 \
+    cli peer channel create \
+    -o orderer.emergency.net:7050 \
+    -c $CHANNEL_NAME \
     --ordererTLSHostnameOverride orderer.emergency.net \
     -f ./channel-artifacts/emergency.tx \
     --outputBlock ./channel-artifacts/emergency.block \
-    --tls --cafile $ORDERER_CA
+    --tls --cafile $ORDERER_CA || echo "Channel creation failed or channel exists"
 
-# 5b. Join Medical
+sleep 2
+
+# 5b. Join Medical Peer
 print_info "Joining Medical Peer..."
 docker exec \
     -e CORE_PEER_LOCALMSPID=MedicalMSP \
@@ -112,7 +131,14 @@ docker exec \
     -e CORE_PEER_ADDRESS=peer0.medical.emergency.net:7051 \
     cli peer channel join -b ./channel-artifacts/emergency.block
 
-# 5c. Join Police
+if [ $? -ne 0 ]; then
+    print_error "Medical peer failed to join channel!"
+    exit 1
+fi
+
+print_success "Medical peer joined channel"
+
+# 5b. Join Police Peer
 print_info "Joining Police Peer..."
 docker exec \
     -e CORE_PEER_LOCALMSPID=PoliceMSP \
@@ -121,4 +147,10 @@ docker exec \
     -e CORE_PEER_ADDRESS=peer0.police.emergency.net:9051 \
     cli peer channel join -b ./channel-artifacts/emergency.block
 
+if [ $? -ne 0 ]; then
+    print_error "Police peer failed to join channel!"
+    exit 1
+fi
+
+print_success "Police peer joined channel"
 print_success "Network setup completed successfully!"

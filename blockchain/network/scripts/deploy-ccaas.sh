@@ -172,7 +172,8 @@ approve_for_medical() {
         --package-id $PACKAGE_ID \
         --sequence $CHAINCODE_SEQUENCE \
         --tls \
-        --cafile $ORDERER_CA
+        --cafile $ORDERER_CA \
+        --signature-policy "OR('MedicalMSP.peer','PoliceMSP.peer')"
     
     print_success "Chaincode approved for Medical"
 }
@@ -195,7 +196,8 @@ approve_for_police() {
         --package-id $PACKAGE_ID \
         --sequence $CHAINCODE_SEQUENCE \
         --tls \
-        --cafile $ORDERER_CA
+        --cafile $ORDERER_CA \
+        --signature-policy "OR('MedicalMSP.peer','PoliceMSP.peer')"
     
     print_success "Chaincode approved for Police"
 }
@@ -221,9 +223,10 @@ commit_chaincode() {
         --peerAddresses $MEDICAL_PEER \
         --tlsRootCertFiles $MEDICAL_TLS_ROOTCERT \
         --peerAddresses $POLICE_PEER \
-        --tlsRootCertFiles $POLICE_TLS_ROOTCERT
+        --tlsRootCertFiles $POLICE_TLS_ROOTCERT \
+        --signature-policy "OR('MedicalMSP.peer','PoliceMSP.peer')"
     
-    print_success "Chaincode committed"
+    print_success "Chaincode committed with OR endorsement policy"
 }
 
 # Initialize chaincode
