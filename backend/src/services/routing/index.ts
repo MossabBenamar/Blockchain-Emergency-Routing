@@ -150,11 +150,12 @@ class PriorityQueue<T> {
   }
 }
 
-// Calculate edge weight based on segment status and vehicle priority
+// Calculate edge weight based on segment status, vehicle priority, and organization
 function calculateEdgeWeight(
   baseWeight: number,
   segmentStatus: BlockchainSegment | undefined,
-  vehiclePriority: number
+  vehiclePriority: number,
+  vehicleOrg?: 'medical' | 'police'
 ): number {
   if (!segmentStatus) return baseWeight;
 
@@ -170,22 +171,24 @@ function calculateEdgeWeight(
     return baseWeight * 100;
   }
 
-  // Reserved segment - penalty based on priority comparison
+  // Reserved segment - penalty based on priority and organization
   if (status === 'reserved' && segmentStatus.priorityLevel !== undefined) {
     const reservedPriority = segmentStatus.priorityLevel;
+    const reservedOrg = segmentStatus.orgType;
 
     if (vehiclePriority < reservedPriority) {
       // Our vehicle has higher priority - can preempt, small penalty
       return baseWeight * 2;
-    } else if (vehiclePriority === reservedPriority) {
-      // Same priority - FCFS rule means we WILL be blocked if someone else has it.
-      // High penalty to force A* to find an alternative route (detour)
-      return baseWeight * 2000;
-    } else {
-      // Lower priority - high penalty (will be denied by conflict service)
-      // Must be effectively infinite to match 'Activate' logic which blocks these segments completely
-      return baseWeight * 10000;
     }
+
+    // Check if same organization (cooperative sharing)
+    if (vehicleOrg && reservedOrg && vehicleOrg === reservedOrg) {
+      // Same org - light penalty for route sharing (cooperative)
+      return baseWeight * 1.2;
+    }
+
+    // Cross-organization with equal/lower priority - hard block
+    return baseWeight * 10000;
   }
 
   return baseWeight;

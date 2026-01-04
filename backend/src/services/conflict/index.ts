@@ -248,7 +248,26 @@ export async function abortMissionDueToConflict(missionId: string, reason: strin
     console.log(`[ConflictService] Aborting mission ${missionId}: ${reason}`);
 
     try {
+        // Get mission details to check organization
+        const mission = await couchdb.getMission(missionId);
+        if (!mission) {
+            console.log(`[ConflictService] Mission ${missionId} not found, cannot abort`);
+            return;
+        }
+
+        // CRITICAL: Only abort missions from the SAME organization
+        // Cross-org missions cannot be aborted due to blockchain access control
+        const currentOrg = process.env.ORG_TYPE || 'medical'; // Get current org from env
+        if (mission.orgType !== currentOrg) {
+            console.log(`[ConflictService] Cannot abort cross-org mission ${missionId} (org: ${mission.orgType}, current: ${currentOrg})`);
+            console.log(`[ConflictService] The ${mission.orgType} organization must handle this mission`);
+            // Instead of aborting, just log and return
+            // The segment will be preempted anyway when the new mission reserves it
+            return;
+        }
+
         await missionService.abortMission(missionId, reason);
+        console.log(`[ConflictService] Successfully aborted mission ${missionId}`);
 
         // Broadcast abort event
         broadcastMessage({
@@ -262,64 +281,84 @@ export async function abortMissionDueToConflict(missionId: string, reason: strin
         });
     } catch (error) {
         console.error(`[ConflictService] Error aborting mission ${missionId}:`, error);
+        // Don't throw - allow the preemption to continue even if abort fails
     }
 }
 
 /**
- * Check if a segment can be reserved by a mission, considering priority
+ * Check if a segment can be reserved by a mission, considering priority and organization
  * @param segmentId The segment to check
- * @param newMissionId The mission trying to reserve
- * @param newPriority The priority of the new mission
- * @returns Whether the reservation would succeed and if preemption is needed
+ * @param requestingMissionId The mission trying to reserve
+ * @param requestingPriority The priority of the requesting mission
+ * @returns Whether the reservation would succeed and if preemption/sharing is needed
  */
 export async function checkSegmentAvailability(
     segmentId: string,
-    newMissionId: string,
-    newPriority: number
+    requestingMissionId: string,
+    requestingPriority: number
 ): Promise<{
     available: boolean;
-    requiresPreemption: boolean;
+    requiresPreemption?: boolean;
+    requiresSharing?: boolean;
     existingMissionId?: string;
-    existingPriority?: number;
 }> {
-    const segment = await couchdb.getSegment(segmentId);
+    try {
+        const segment = await couchdb.getSegment(segmentId);
 
-    if (!segment) {
-        // Segment doesn't exist yet, so it's free (lazy initialization on chaincode)
-        console.log(`[ConflictService] Segment ${segmentId} does not exist yet (lazy init), treating as free`);
-        return { available: true, requiresPreemption: false };
+        // If segment doesn't exist or is free, it's available
+        if (!segment || segment.status === 'free') {
+            return { available: true };
+        }
+
+        // If segment is occupied, it's never available
+        if (segment.status === 'occupied') {
+            return { available: false };
+        }
+
+        // Segment is reserved - check priority and organization
+        if (segment.status === 'reserved' && segment.missionId) {
+            const existingMissionId = segment.missionId;
+            const segmentPriority = segment.priorityLevel ?? 5;
+            const segmentOrg = segment.orgType;
+
+            // Get requesting mission's organization
+            const requestingMission = await couchdb.getMission(requestingMissionId);
+            const requestingOrg = requestingMission?.orgType;
+
+            // SAME ORGANIZATION = COOPERATIVE SHARING
+            // Vehicles from the same org can share routes (e.g., AMB-001 and AMB-002)
+            if (requestingOrg && segmentOrg && requestingOrg === segmentOrg) {
+                console.log(`[Conflict] Same-org sharing: ${requestingMissionId} (${requestingOrg}) can share segment ${segmentId} with ${existingMissionId}`);
+                return {
+                    available: true,
+                    requiresSharing: true,
+                    existingMissionId
+                };
+            }
+
+            // CROSS-ORGANIZATION = PRIORITY-BASED CONFLICT RESOLUTION
+            if (requestingPriority < segmentPriority) {
+                // Requesting mission has higher priority - can preempt
+                console.log(`[Conflict] Cross-org preemption: ${requestingMissionId} (P${requestingPriority}) can preempt ${existingMissionId} (P${segmentPriority}) on segment ${segmentId}`);
+                return {
+                    available: true,
+                    requiresPreemption: true,
+                    existingMissionId
+                };
+            } else {
+                // Requesting mission has lower or equal priority - blocked
+                console.log(`[Conflict] Cross-org blocked: ${requestingMissionId} (P${requestingPriority}) blocked by ${existingMissionId} (P${segmentPriority}) on segment ${segmentId}`);
+                return { available: false };
+            }
+        }
+
+        // Default: segment is available
+        return { available: true };
+    } catch (error) {
+        console.error(`Error checking segment availability for ${segmentId}:`, error);
+        // On error, assume not available to be safe
+        return { available: false };
     }
-
-    if (segment.status === 'free') {
-        return { available: true, requiresPreemption: false };
-    }
-
-    // Segment is reserved or occupied
-    // Default to priority 5 (lowest) if not set - this allows higher priority to preempt
-    const existingPriority = segment.priorityLevel ?? 5;
-    const existingMissionId = segment.missionId;
-
-    console.log(`[ConflictService] Checking segment ${segmentId}: status=${segment.status}, existingPriority=${existingPriority}, newPriority=${newPriority}`);
-
-    if (newPriority < existingPriority) {
-        // New mission has higher priority (lower number) - can preempt
-        console.log(`[ConflictService] -> Can preempt: ${newPriority} < ${existingPriority}`);
-        return {
-            available: true,
-            requiresPreemption: true,
-            existingMissionId,
-            existingPriority,
-        };
-    }
-
-    // New mission has lower or equal priority - cannot take segment
-    console.log(`[ConflictService] -> Cannot preempt: ${newPriority} >= ${existingPriority}`);
-    return {
-        available: false,
-        requiresPreemption: false,
-        existingMissionId,
-        existingPriority,
-    };
 }
 
 /**

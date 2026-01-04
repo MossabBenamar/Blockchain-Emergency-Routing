@@ -185,6 +185,7 @@ router.post('/:missionId/activate', asyncHandler(async (req: Request, res: Respo
   // Check each segment in the path for conflicts
   const blockedSegments: string[] = [];
   const preemptableSegments: { segmentId: string; missionId: string }[] = [];
+  const sharedSegments: { segmentId: string; missionId: string }[] = [];
 
   for (const segmentId of path) {
     const availability = await conflictService.checkSegmentAvailability(
@@ -193,12 +194,18 @@ router.post('/:missionId/activate', asyncHandler(async (req: Request, res: Respo
       pendingMission.priorityLevel
     );
 
-    if (!availability.available && !availability.requiresPreemption) {
+    if (!availability.available && !availability.requiresPreemption && !availability.requiresSharing) {
       // Segment is blocked by higher or equal priority - need to reroute
       blockedSegments.push(segmentId);
     } else if (availability.requiresPreemption && availability.existingMissionId) {
       // Can preempt - track for later handling
       preemptableSegments.push({
+        segmentId,
+        missionId: availability.existingMissionId,
+      });
+    } else if (availability.requiresSharing && availability.existingMissionId) {
+      // Same-org sharing - log for tracking
+      sharedSegments.push({
         segmentId,
         missionId: availability.existingMissionId,
       });
@@ -282,6 +289,7 @@ router.post('/:missionId/activate', asyncHandler(async (req: Request, res: Respo
       mission,
       wasRerouted: blockedSegments.length > 0,
       preemptedMissions: preemptableSegments.map(p => p.missionId),
+      sharedSegments: sharedSegments.length, // Number of shared segments
     },
     timestamp: Date.now(),
   });
@@ -293,7 +301,9 @@ router.post('/:missionId/activate', asyncHandler(async (req: Request, res: Respo
       ? 'Mission activated with alternative route (original path was blocked)'
       : preemptableSegments.length > 0
         ? `Mission activated (preempted ${preemptableSegments.length} lower priority mission(s))`
-        : 'Mission activated successfully',
+        : sharedSegments.length > 0
+          ? `Mission activated (sharing ${sharedSegments.length} segment(s) with same-org vehicles)`
+          : 'Mission activated successfully',
   });
 }));
 
@@ -710,14 +720,25 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
   // 4. Check for conflicts before creating mission
   const blockedSegments: string[] = [];
   const preemptableSegments: { segmentId: string; missionId: string }[] = [];
+  const sharedSegments: { segmentId: string; missionId: string }[] = [];
 
   for (const segmentId of routeResult.path) {
     const segment = segmentMap.get(segmentId);
     if (segment && segment.status !== 'free') {
-      // Check priority (default to 5 if priorityLevel is undefined)
       const segmentPriority = segment.priorityLevel ?? 5;
-      if (vehiclePriority < segmentPriority) {
-        // Can preempt
+      const segmentOrg = segment.orgType;
+      const vehicleOrg = vehicle.orgType;
+
+      // SAME ORG = COOPERATIVE SHARING
+      if (segmentOrg && vehicleOrg && segmentOrg === vehicleOrg) {
+        if (segment.missionId) {
+          sharedSegments.push({
+            segmentId,
+            missionId: segment.missionId,
+          });
+        }
+      } else if (vehiclePriority < segmentPriority) {
+        // CROSS-ORG: Can preempt
         if (segment.missionId) {
           preemptableSegments.push({
             segmentId,
@@ -725,7 +746,7 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
           });
         }
       } else {
-        // Blocked by higher or equal priority
+        // CROSS-ORG: Blocked by higher or equal priority
         blockedSegments.push(segmentId);
       }
     }
@@ -805,6 +826,7 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
       },
       wasRerouted,
       preemptedMissions: preemptableSegments.map(p => p.missionId),
+      sharedSegments: sharedSegments.length,
     },
     timestamp: Date.now(),
   });
@@ -825,7 +847,9 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
       ? 'Mission created with alternative route (original path was blocked)'
       : preemptableSegments.length > 0
         ? `Mission created and activated (preempted ${preemptableSegments.length} mission(s))`
-        : 'Mission created and activated successfully',
+        : sharedSegments.length > 0
+          ? `Mission created and activated (sharing ${sharedSegments.length} segment(s) with same-org vehicles)`
+          : 'Mission created and activated successfully',
   });
 }));
 
