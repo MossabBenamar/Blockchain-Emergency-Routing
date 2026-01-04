@@ -90,12 +90,13 @@ export interface Mission {
   originNode: string;
   destNode: string;
   path: string[];
+  geometry?: Array<[number, number]>; // OSRM geometry for route visualization
   status: 'pending' | 'active' | 'completed' | 'aborted';
   createdAt: number;
   activatedAt?: number;
   completedAt?: number;
+  createdBy: string;
 }
-
 export interface CreateMissionRequest {
   vehicleId: string;
   originNode: string;

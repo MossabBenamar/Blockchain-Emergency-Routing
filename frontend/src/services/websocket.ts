@@ -6,8 +6,8 @@ type MessageHandler = (message: WebSocketMessage) => void;
 
 // WebSocket URLs for each organization
 const WS_URLS = {
-  medical: 'ws://localhost:3002',
-  police: 'ws://localhost:3004',
+  medical: 'ws://localhost:3002',  // Medical backend WebSocket port
+  police: 'ws://localhost:3004',   // Police backend WebSocket port
 };
 
 class WebSocketService {
@@ -25,13 +25,17 @@ class WebSocketService {
   }
 
   setOrganization(org: 'medical' | 'police') {
+    console.log(`[WebSocket] Switching from ${this.currentOrg} to ${org}`);
     if (this.currentOrg !== org) {
       this.currentOrg = org;
       this.url = WS_URLS[org];
+      console.log(`[WebSocket] New URL: ${this.url}`);
       // Reconnect to the new organization's WebSocket
       if (this.ws) {
-        this.disconnect();
-        this.connect().catch(console.error);
+        console.log('[WebSocket] Disconnecting from old org...');
+        this.disconnect(false); // Don't clear handlers when switching orgs!
+        console.log('[WebSocket] Connecting to new org...');
+        this.connect().catch(err => console.error('[WebSocket] Connection failed:', err));
       }
     }
   }
@@ -54,7 +58,7 @@ class WebSocketService {
         this.ws = new WebSocket(this.url);
 
         this.ws.onopen = () => {
-          console.log('WebSocket connected');
+          console.log(`[WebSocket] Connected to ${this.url} (${this.currentOrg} org)`);
           this.reconnectAttempts = 0;
           this.isConnecting = false;
           resolve();
@@ -139,12 +143,15 @@ class WebSocketService {
     this.send('PING', {});
   }
 
-  disconnect() {
+  disconnect(clearHandlers: boolean = true) {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
-    this.handlers.clear();
+    // Only clear handlers on full disconnect, not when switching orgs
+    if (clearHandlers) {
+      this.handlers.clear();
+    }
   }
 
   get isConnected(): boolean {

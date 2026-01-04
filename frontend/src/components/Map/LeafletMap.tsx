@@ -5,7 +5,6 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap,
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Node, Segment, Vehicle, Mission, VehiclePosition } from '../../types';
-import api from '../../services/api';
 import './LeafletMap.css';
 
 // Fix for default marker icons in React-Leaflet
@@ -211,49 +210,23 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     });
   }, [vehicles, vehiclePositions]);
 
-  // Calculate and cache OSRM geometry for active missions
+  // Use stored geometry from missions (calculated during activation with OSRM)
   const [missionGeometries, setMissionGeometries] = useState<Map<string, Array<[number, number]>>>(new Map());
 
   useEffect(() => {
-    const calculateMissionGeometries = async () => {
-      const geometries = new Map<string, Array<[number, number]>>();
+    const geometries = new Map<string, Array<[number, number]>>();
 
-      for (const mission of activeMissions) {
-        if (mission.status !== 'active' || !mission.originNode || !mission.destNode) continue;
+    for (const mission of activeMissions) {
+      if (mission.status !== 'active') continue;
 
-        const originNode = nodeMap.get(mission.originNode);
-        const destNode = nodeMap.get(mission.destNode);
-
-        if (!originNode || !destNode ||
-          originNode.lat === undefined || originNode.lon === undefined ||
-          destNode.lat === undefined || destNode.lon === undefined) continue;
-
-        try {
-          // Use coordinate-based routing to get OSRM geometry
-          const response = await api.calculateRoute({
-            originLat: originNode.lat,
-            originLon: originNode.lon,
-            destLat: destNode.lat,
-            destLon: destNode.lon,
-          });
-
-          if (response.success && response.data?.geometry && response.data.geometry.length > 0) {
-            geometries.set(mission.missionId, response.data.geometry);
-          }
-        } catch (error) {
-          console.warn(`Failed to calculate geometry for mission ${mission.missionId}:`, error);
-        }
+      // Use stored geometry if available
+      if (mission.geometry && mission.geometry.length > 0) {
+        geometries.set(mission.missionId, mission.geometry);
       }
-
-      setMissionGeometries(geometries);
-    };
-
-    if (activeMissions.length > 0) {
-      calculateMissionGeometries();
-    } else {
-      setMissionGeometries(new Map());
     }
-  }, [activeMissions, nodeMap]);
+
+    setMissionGeometries(geometries);
+  }, [activeMissions]);
 
   return (
     <div className="leaflet-map-container">

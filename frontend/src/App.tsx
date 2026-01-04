@@ -331,14 +331,17 @@ function App() {
   // Phase 5: Simulation WebSocket events
   useWebSocketEvent('VEHICLE_POSITION', (message) => {
     const position = message.payload as VehiclePosition;
+    console.log('[WebSocket] VEHICLE_POSITION received:', position);
     if (position) {
       setVehiclePositions(prev => {
         const existing = prev.findIndex(p => p.vehicleId === position.vehicleId);
         if (existing >= 0) {
           const updated = [...prev];
           updated[existing] = position;
+          console.log(`[UI] Updated position for ${position.vehicleId}, lat:${position.lat}, lon:${position.lon}`);
           return updated;
         }
+        console.log(`[UI] Added new vehicle ${position.vehicleId}, lat:${position.lat}, lon:${position.lon}`);
         return [...prev, position];
       });
     }
@@ -385,10 +388,15 @@ function App() {
   });
 
   // Handle organization change
-  const handleOrgChange = useCallback((org: OrgType) => {
+  const handleOrgChange = useCallback(async (org: OrgType) => {
     setCurrentOrg(org);
     setSelectedSegmentId(null);
     setHighlightedRoute([]);
+
+    // Clear vehicle positions when switching organizations
+    // This prevents showing vehicles from the previous org
+    setVehiclePositions([]);
+    setSimulationStatus(null);
 
     // Switch API and WebSocket to the new organization's backend
     api.setOrganization(org);

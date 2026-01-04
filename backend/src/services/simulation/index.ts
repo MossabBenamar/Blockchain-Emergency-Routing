@@ -18,6 +18,7 @@ interface VehicleSimState {
   vehicleId: string;
   missionId: string;
   path: string[];
+  geometry?: Array<[number, number]>; // OSRM geometry from mission
   currentSegmentIndex: number;
   progress: number; // 0 to 100 (percentage along current segment)
   status: 'idle' | 'moving' | 'paused' | 'arrived' | 'aborted';
@@ -222,6 +223,7 @@ export function addVehicleToSimulation(mission: Mission): void {
     vehicleId: mission.vehicleId,
     missionId: mission.missionId,
     path: mission.path,
+    geometry: mission.geometry, // Store OSRM geometry from mission
     currentSegmentIndex: 0,
     progress: 0,
     status: simulationState.isRunning && !simulationState.isPaused ? 'moving' : 'idle',
@@ -272,7 +274,7 @@ async function loadActiveMissions(): Promise<void> {
 
     let addedCount = 0;
     missions.forEach(mission => {
-      console.log(`Checking mission ${mission.missionId}: status=${mission.status}, path length=${mission.path?.length || 0}`);
+      console.log(`Checking mission ${mission.missionId}: status=${mission.status}, path length=${mission.path?.length || 0}, geometry=${mission.geometry ? mission.geometry.length + ' points' : 'MISSING'}`);
 
       if (mission.status === 'active' && mission.path && mission.path.length > 0) {
         // Don't add if already in simulation
@@ -543,8 +545,38 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Calculate lat/lon position from vehicle state
+ * Uses stored OSRM geometry for accurate street-following visualization
  */
 function calculateVehiclePosition(vehicle: VehicleSimState): { lat: number; lon: number } | null {
+  // If vehicle has OSRM geometry, use it for accurate positioning
+  if (vehicle.geometry && vehicle.geometry.length > 0) {
+    // Calculate overall progress through the entire route
+    const totalSegments = vehicle.path.length;
+    const overallProgress = (vehicle.currentSegmentIndex + vehicle.progress / 100) / totalSegments;
+
+    // Map progress to geometry array
+    const geometryLength = vehicle.geometry.length;
+    const geometryPosition = overallProgress * (geometryLength - 1);
+    const geometryIndex = Math.floor(geometryPosition);
+    const geometryProgress = geometryPosition - geometryIndex;
+
+    // Handle edge cases
+    if (geometryIndex >= geometryLength - 1) {
+      const lastPoint = vehicle.geometry[geometryLength - 1];
+      return { lat: lastPoint[0], lon: lastPoint[1] };
+    }
+
+    // Interpolate between two geometry points
+    const point1 = vehicle.geometry[geometryIndex];
+    const point2 = vehicle.geometry[geometryIndex + 1];
+
+    const lat = point1[0] + (point2[0] - point1[0]) * geometryProgress;
+    const lon = point1[1] + (point2[1] - point1[1]) * geometryProgress;
+
+    return { lat, lon };
+  }
+
+  // Fallback: Use simple node-to-node interpolation if no geometry
   const currentSegmentId = vehicle.path[vehicle.currentSegmentIndex];
   if (!currentSegmentId) return null;
 
@@ -559,7 +591,6 @@ function calculateVehiclePosition(vehicle: VehicleSimState): { lat: number; lon:
   const toNode = nodeMap.get(segment.to);
   if (!fromNode || !toNode) return null;
 
-  // Interpolate position based on progress
   const progress = vehicle.progress / 100;
   const lat = fromNode.lat + (toNode.lat - fromNode.lat) * progress;
   const lon = fromNode.lon + (toNode.lon - fromNode.lon) * progress;
@@ -575,16 +606,16 @@ function broadcastVehiclePosition(vehicle: VehicleSimState): void {
   const position = calculateVehiclePosition(vehicle);
 
   const positionData = {
-      vehicleId: vehicle.vehicleId,
-      missionId: vehicle.missionId,
+    vehicleId: vehicle.vehicleId,
+    missionId: vehicle.missionId,
     currentSegment: currentSegmentId,
-      previousSegment: vehicle.currentSegmentIndex > 0 ? vehicle.path[vehicle.currentSegmentIndex - 1] : null,
-      nextSegment: vehicle.currentSegmentIndex < vehicle.path.length - 1 ? vehicle.path[vehicle.currentSegmentIndex + 1] : null,
-      progress: Math.round(vehicle.progress),
-      segmentIndex: vehicle.currentSegmentIndex,
-      totalSegments: vehicle.path.length,
-      status: vehicle.status,
-      orgType: vehicle.orgType,
+    previousSegment: vehicle.currentSegmentIndex > 0 ? vehicle.path[vehicle.currentSegmentIndex - 1] : null,
+    nextSegment: vehicle.currentSegmentIndex < vehicle.path.length - 1 ? vehicle.path[vehicle.currentSegmentIndex + 1] : null,
+    progress: Math.round(vehicle.progress),
+    segmentIndex: vehicle.currentSegmentIndex,
+    totalSegments: vehicle.path.length,
+    status: vehicle.status,
+    orgType: vehicle.orgType,
     lat: position?.lat,
     lon: position?.lon,
     heading: position ? calculateHeading(vehicle) : undefined,

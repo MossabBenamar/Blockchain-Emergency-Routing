@@ -47,12 +47,45 @@ export async function getDocument<T>(docId: string): Promise<T | null> {
       throw new Error(`CouchDB error: ${response.status}`);
     }
     const doc = await response.json() as CouchDBDoc<T> & T;
-    // Remove CouchDB metadata
-    const { _id, _rev, '~version': version, ...data } = doc;
-    return data as T;
+    return doc;
   } catch (error) {
     console.error(`Error fetching document ${docId}:`, error);
-    throw error;
+    return null;
+  }
+}
+
+/**
+ * Update an existing document
+ */
+export async function updateDocument<T extends Record<string, any>>(docId: string, updates: Partial<T>): Promise<boolean> {
+  try {
+    // First, get the current document to get its _rev
+    const currentDoc = await getDocument<T>(docId);
+    if (!currentDoc) {
+      console.error(`Document ${docId} not found for update`);
+      return false;
+    }
+
+    // Merge updates with current document
+    const updatedDoc = { ...currentDoc, ...updates };
+
+    // Update the document
+    const response = await fetch(`${COUCHDB_URL}/${DATABASE_NAME}/${encodeURIComponent(docId)}`, {
+      method: 'PUT',
+      headers: getHeaders('application/json'),
+      body: JSON.stringify(updatedDoc),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`Failed to update document ${docId}:`, error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error updating document ${docId}:`, error);
+    return false;
   }
 }
 
@@ -69,14 +102,14 @@ export async function queryDocuments<T>(selector: Record<string, unknown>): Prom
         limit: 1000,
       }),
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`CouchDB query error: ${response.status} - ${errorText}`);
     }
-    
+
     const result = await response.json() as { docs: Array<CouchDBDoc<T> & T> };
-    
+
     // Remove CouchDB metadata from each document
     return result.docs.map(doc => {
       const { _id, _rev, '~version': version, ...data } = doc;

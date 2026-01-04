@@ -27,6 +27,7 @@ export interface Mission {
   originNode: string;
   destNode: string;
   path: string[];
+  geometry?: Array<[number, number]>; // OSRM geometry for route visualization
   status: 'pending' | 'active' | 'completed' | 'aborted';
   createdAt: number;
   activatedAt?: number;
@@ -52,7 +53,7 @@ export interface RouteRequest {
   destNode?: string;
   vehicleId?: string;
   missionId?: string;
-  
+
   // Coordinate-based routing (new - for OSRM)
   originLat?: number;
   originLon?: number;
@@ -182,7 +183,7 @@ export interface WsMessage {
   timestamp: number;
 }
 
-export type WsEventType = 
+export type WsEventType =
   | 'SEGMENT_UPDATED'
   | 'VEHICLE_UPDATED'
   | 'CONFLICT_DETECTED'

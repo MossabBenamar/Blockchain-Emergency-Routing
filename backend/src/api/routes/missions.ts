@@ -12,6 +12,7 @@ import conflictService from '../../services/conflict';
 import { broadcastMessage } from '../../services/realtime/websocket';
 import { addVehicleToSimulation, getSimulationStatus, handleMissionRerouted } from '../../services/simulation';
 import * as historyService from '../../services/history';
+import { getManhattanNodes } from '../../services/map/manhattan';
 import {
   CreateMissionRequest,
   RouteRequest,
@@ -314,27 +315,44 @@ router.post('/:missionId/activate', asyncHandler(async (req: Request, res: Respo
 router.post('/:missionId/complete', asyncHandler(async (req: Request, res: Response) => {
   const { missionId } = req.params;
 
-  const mission = await withRetry(
-    () => missionService.completeMission(missionId),
-    3,
-    `Complete mission ${missionId}`
-  );
+  try {
+    const mission = await withRetry(
+      () => missionService.completeMission(missionId),
+      3,
+      `Complete mission ${missionId}`
+    );
 
-  // Track in history
-  historyService.trackMissionCompleted(mission);
+    // Track in history
+    historyService.trackMissionCompleted(mission);
 
-  // Broadcast to WebSocket clients
-  broadcastMessage({
-    type: 'MISSION_COMPLETED',
-    payload: { mission },
-    timestamp: Date.now(),
-  });
+    // Broadcast to WebSocket clients
+    broadcastMessage({
+      type: 'MISSION_COMPLETED',
+      payload: { mission },
+      timestamp: Date.now(),
+    });
 
-  res.json({
-    success: true,
-    data: mission,
-    message: 'Mission completed successfully',
-  });
+    res.json({
+      success: true,
+      message: 'Mission completed successfully',
+      data: mission,
+    });
+  } catch (error: any) {
+    // Check if mission is already completed or not active
+    const errorMsg = error.message || error.details?.[0]?.message || '';
+
+    if (errorMsg.includes('not active') || errorMsg.includes('already completed')) {
+      console.log(`Mission ${missionId} already completed or not active, returning success`);
+      res.json({
+        success: true,
+        message: 'Mission already completed',
+      });
+      return;
+    }
+
+    // Other errors - rethrow
+    throw error;
+  }
 }));
 
 /**
@@ -799,6 +817,38 @@ router.post('/create-and-activate', asyncHandler(async (req: Request, res: Respo
 
   // 7. Activate mission with calculated path
   const activatedMission = await missionService.activateMission(mission.missionId, routeResult.path);
+
+  // 8. Fetch OSRM geometry for accurate visualization and simulation
+  try {
+    const nodes = getManhattanNodes();
+    const originNodeData = nodes.find(n => n.id === originNode);
+    const destNodeData = nodes.find(n => n.id === destNode);
+
+    if (originNodeData && destNodeData &&
+      originNodeData.lat !== undefined && originNodeData.lon !== undefined &&
+      destNodeData.lat !== undefined && destNodeData.lon !== undefined) {
+
+      // Use OSRM to get accurate street-following geometry
+      const osrmService = (await import('../../services/osrm/osrmService')).osrmService;
+      const osrmResult = await osrmService.calculateRoute(
+        originNodeData.lat,
+        originNodeData.lon,
+        destNodeData.lat,
+        destNodeData.lon,
+        { profile: 'driving' }
+      );
+
+      if (osrmResult.geometry && osrmResult.geometry.length > 0) {
+        // Store geometry in CouchDB mission document
+        activatedMission.geometry = osrmResult.geometry;
+        await couchdb.updateDocument(activatedMission.missionId, { geometry: osrmResult.geometry });
+        console.log(`Stored OSRM geometry (${osrmResult.geometry.length} points) for mission ${mission.missionId}`);
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to fetch/store OSRM geometry for mission ${mission.missionId}:`, error);
+    // Non-critical - continue without geometry
+  }
 
   // Track in history
   historyService.trackMissionCreated(mission);
