@@ -13,8 +13,8 @@ import { useSocketIO, useVehiclePositions } from './hooks/useSocketIO';
 import api from './services/api';
 import wsService from './services/websocket';
 import socketIOService from './services/socketio';
-import type { Node, Segment, Vehicle, OrgType, Mission, VehiclePosition, SimulationStatus, RouteResult } from './types';
-import { RoutePlanningPanel } from './components/RoutePlanning/RoutePlanningPanel';
+import type { Node, Segment, Vehicle, OrgType, Mission, VehiclePosition, SimulationStatus } from './types';
+import { VehicleManagementPanel } from './components/VehicleManagement/VehicleManagementPanel';
 import './App.css';
 
 // Demo data for when backend is not available
@@ -115,11 +115,8 @@ function App() {
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
   const [showMissionPanel, setShowMissionPanel] = useState(false);
 
-  // Route planning state
-  const [showRoutePlanningPanel, setShowRoutePlanningPanel] = useState(false);
-  const [startPoint, setStartPoint] = useState<[number, number] | null>(null);
-  const [endPoint, setEndPoint] = useState<[number, number] | null>(null);
-  const [routePlanningMode, setRoutePlanningMode] = useState(false);
+  // Vehicle Management state
+  const [showVehiclePanel, setShowVehiclePanel] = useState(false);
 
   // Simulation state (Phase 5)
   const [simulationStatus, setSimulationStatus] = useState<SimulationStatus | null>(null);
@@ -624,25 +621,14 @@ function App() {
               selectedSegment={selectedSegmentId}
               onSegmentClick={handleSegmentClick}
               onMapClick={(lat, lon) => {
-                if (routePlanningMode) {
-                  if (!startPoint) {
-                    setStartPoint([lat, lon]);
-                  } else if (!endPoint) {
-                    setEndPoint([lat, lon]);
-                  } else {
-                    // Replace end point
-                    setEndPoint([lat, lon]);
-                  }
-                }
+                // Map click handling can be added later if needed
+                console.log('Map clicked:', lat, lon);
               }}
               currentOrg={currentOrg}
               highlightedRoute={highlightedRoute}
               activeMissions={activeMissions}
               vehiclePositions={vehiclePositions}
               routeGeometry={routeGeometry.length > 0 ? routeGeometry : undefined}
-              startPoint={startPoint}
-              endPoint={endPoint}
-              routePlanningMode={routePlanningMode}
               center={nodes.length > 0 && nodes[0].lat !== undefined ?
                 [nodes[0].lat, nodes[0].lon!] : [40.7589, -73.9851]}
               zoom={13}
@@ -665,7 +651,7 @@ function App() {
             <div className="info-card clickable" onClick={() => {
               setShowMissionPanel(!showMissionPanel);
               if (!showMissionPanel) {
-                setShowRoutePlanningPanel(false);
+                setShowVehiclePanel(false);
                 setShowHistoryPanel(false);
               }
             }}>
@@ -675,16 +661,15 @@ function App() {
               </span>
             </div>
             <div className="info-card clickable" onClick={() => {
-              setShowRoutePlanningPanel(!showRoutePlanningPanel);
-              setRoutePlanningMode(!showRoutePlanningPanel);
-              if (!showRoutePlanningPanel) {
+              setShowVehiclePanel(!showVehiclePanel);
+              if (!showVehiclePanel) {
                 setShowMissionPanel(false);
                 setShowHistoryPanel(false);
               }
             }}>
-              <span className="info-label">Route Planning</span>
-              <span className="info-value route-planning-toggle">
-                {showRoutePlanningPanel ? '🗺️ Hide' : '🗺️ Plan Route'}
+              <span className="info-label">Vehicle Management</span>
+              <span className="info-value vehicle-toggle">
+                {showVehiclePanel ? '🚗 Hide' : '🚗 Manage Fleet'}
               </span>
             </div>
             <div className="info-card clickable" onClick={() => {
@@ -727,37 +712,14 @@ function App() {
               }}
             />
           </aside>
-        ) : showRoutePlanningPanel ? (
-          <aside className="route-planning-sidebar">
-            <RoutePlanningPanel
-              onRouteCalculated={(route: RouteResult) => {
-                if (route.geometry) {
-                  setRouteGeometry(route.geometry);
-                }
-              }}
-              onClearRoute={() => {
-                setRouteGeometry([]);
-                setStartPoint(null);
-                setEndPoint(null);
-              }}
+        ) : showVehiclePanel ? (
+          <aside className="vehicle-sidebar">
+            <VehicleManagementPanel
+              currentOrg={currentOrg}
+              vehicles={vehicles}
+              onVehicleUpdate={fetchData}
               isLoading={isLoading}
               setIsLoading={setIsLoading}
-              onStartPointSelect={(lat: number, lon: number) => {
-                if (lat === 0 && lon === 0) {
-                  setStartPoint(null);
-                } else {
-                  setStartPoint([lat, lon]);
-                }
-              }}
-              onEndPointSelect={(lat: number, lon: number) => {
-                if (lat === 0 && lon === 0) {
-                  setEndPoint(null);
-                } else {
-                  setEndPoint([lat, lon]);
-                }
-              }}
-              startPoint={startPoint}
-              endPoint={endPoint}
             />
           </aside>
         ) : showSimulationPanel ? (
