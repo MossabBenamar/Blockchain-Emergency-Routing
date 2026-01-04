@@ -1,7 +1,7 @@
 // LeafletMap Component - Real Interactive Map with OSM Tiles
 
-import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap } from 'react-leaflet';
+import React, { useEffect, useMemo, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Node, Segment, Vehicle, Mission, VehiclePosition } from '../../types';
@@ -45,13 +45,25 @@ interface LeafletMapProps {
   routePlanningMode?: boolean; // Enable route planning mode (click to set points)
 }
 
+// Component to handle map clicks
+function MapClickHandler({ onMapClick }: { onMapClick?: (lat: number, lon: number) => void }) {
+  useMapEvents({
+    click: (e) => {
+      if (onMapClick) {
+        onMapClick(e.latlng.lat, e.latlng.lng);
+      }
+    },
+  });
+  return null;
+}
+
 // Component to handle map bounds updates
-function MapBoundsUpdater({ 
-  nodes, 
-  vehiclePositions 
-}: { 
-  nodes: Node[]; 
-  vehiclePositions?: VehiclePosition[] 
+function MapBoundsUpdater({
+  nodes,
+  vehiclePositions
+}: {
+  nodes: Node[];
+  vehiclePositions?: VehiclePosition[]
 }) {
   const map = useMap();
 
@@ -66,8 +78,8 @@ function MapBoundsUpdater({
     }
 
     const allPoints: [number, number][] = [
-      ...validNodes.map(n => [n.lat!, n.lon!]),
-      ...validPositions.map(vp => [vp.lat!, vp.lon!])
+      ...validNodes.map(n => [n.lat!, n.lon!] as [number, number]),
+      ...validPositions.map(vp => [vp.lat!, vp.lon!] as [number, number])
     ];
 
     if (allPoints.length > 0) {
@@ -86,7 +98,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   selectedSegment,
   onSegmentClick,
   onMapClick,
-  currentOrg,
   highlightedRoute = [],
   activeMissions = [],
   vehiclePositions = [],
@@ -104,13 +115,6 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
     return map;
   }, [nodes]);
 
-  // Create segment lookup map
-  const segmentMap = useMemo(() => {
-    const map = new Map<string, Segment>();
-    segments.forEach((seg) => map.set(seg.id, seg));
-    return map;
-  }, [segments]);
-
   // Get POI nodes (hospitals, police stations, etc.)
   const poiNodes = useMemo(() => {
     return nodes.filter(node => node.type === 'poi' && node.lat !== undefined && node.lon !== undefined);
@@ -126,7 +130,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
       const fromNode = nodeMap.get(seg.from);
       const toNode = nodeMap.get(seg.to);
       return fromNode?.lat !== undefined && fromNode?.lon !== undefined &&
-             toNode?.lat !== undefined && toNode?.lon !== undefined;
+        toNode?.lat !== undefined && toNode?.lon !== undefined;
     });
   }, [segments, nodeMap]);
 
@@ -166,7 +170,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   const createVehicleIcon = (orgType: 'medical' | 'police', isMoving: boolean) => {
     const color = orgType === 'medical' ? '#ff6b6b' : '#4dabf7';
     const size = isMoving ? 20 : 16;
-    
+
     return L.divIcon({
       className: 'vehicle-marker',
       html: `
@@ -188,8 +192,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   // Get active vehicles with positions
   const activeVehicles = useMemo(() => {
     return vehiclePositions
-      .filter(vp => vp.lat !== undefined && vp.lon !== undefined && 
-                    (vp.status === 'moving' || vp.status === 'paused' || vp.status === 'idle'))
+      .filter(vp => vp.lat !== undefined && vp.lon !== undefined &&
+        (vp.status === 'moving' || vp.status === 'paused' || vp.status === 'idle'))
       .map(vp => {
         const vehicle = vehicles.find(v => v.vehicleId === vp.vehicleId);
         return {
@@ -213,16 +217,16 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
   useEffect(() => {
     const calculateMissionGeometries = async () => {
       const geometries = new Map<string, Array<[number, number]>>();
-      
+
       for (const mission of activeMissions) {
         if (mission.status !== 'active' || !mission.originNode || !mission.destNode) continue;
-        
+
         const originNode = nodeMap.get(mission.originNode);
         const destNode = nodeMap.get(mission.destNode);
-        
-        if (!originNode || !destNode || 
-            originNode.lat === undefined || originNode.lon === undefined ||
-            destNode.lat === undefined || destNode.lon === undefined) continue;
+
+        if (!originNode || !destNode ||
+          originNode.lat === undefined || originNode.lon === undefined ||
+          destNode.lat === undefined || destNode.lon === undefined) continue;
 
         try {
           // Use coordinate-based routing to get OSRM geometry
@@ -240,7 +244,7 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           console.warn(`Failed to calculate geometry for mission ${mission.missionId}:`, error);
         }
       }
-      
+
       setMissionGeometries(geometries);
     };
 
@@ -268,9 +272,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        
+
         <MapBoundsUpdater nodes={nodes} vehiclePositions={vehiclePositions} />
-        
+
         {/* Map click handler for route planning */}
         {routePlanningMode && onMapClick && (
           <MapClickHandler onMapClick={onMapClick} />
@@ -326,13 +330,16 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
             const geometry = missionGeometries.get(mission.missionId);
             if (!geometry || geometry.length < 2) return null;
 
+            const isMedical = mission.orgType === 'medical';
+            const routeColor = isMedical ? '#e63946' : '#0077b6'; // Red for Medical, Blue for Police
+
             return (
               <React.Fragment key={`mission-${mission.missionId}`}>
                 {/* Glow effect for mission route */}
                 <Polyline
                   positions={geometry}
                   pathOptions={{
-                    color: '#8b0000',
+                    color: routeColor,
                     weight: 13,
                     opacity: 0.3,
                     lineCap: 'round',
@@ -343,9 +350,9 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
                 <Polyline
                   positions={geometry}
                   pathOptions={{
-                    color: '#8b0000',
-                    weight: 5,
-                    opacity: 0.9,
+                    color: routeColor,
+                    weight: 6,
+                    opacity: 1.0,
                     lineCap: 'round',
                     lineJoin: 'round',
                   }}
@@ -358,11 +365,21 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         {validSegments.map((segment) => {
           const fromNode = nodeMap.get(segment.from);
           const toNode = nodeMap.get(segment.to);
-          
-          if (!fromNode || !toNode || 
-              fromNode.lat === undefined || fromNode.lon === undefined ||
-              toNode.lat === undefined || toNode.lon === undefined) {
+
+          if (!fromNode || !toNode ||
+            fromNode.lat === undefined || fromNode.lon === undefined ||
+            toNode.lat === undefined || toNode.lon === undefined) {
             return null;
+          }
+
+          // FIX: Don't render reserved segments if they belong to a mission we are already drawing
+          // This prevents the "double red line" issue (one OSRM line, one segment line)
+          const missionId = segment.reservedBy?.missionId;
+          if (segment.status === 'reserved' && missionId && activeMissions.some(m => m.missionId === missionId)) {
+            // Check if we are actually rendering this mission (have geometry)
+            if (missionGeometries.has(missionId)) {
+              return null;
+            }
           }
 
           const positions: [number, number][] = [
@@ -418,8 +435,8 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         {poiNodes.map((node) => {
           if (node.lat === undefined || node.lon === undefined) return null;
 
-          const color = node.orgType === 'medical' ? '#ff6b6b' : 
-                       node.orgType === 'police' ? '#4dabf7' : '#ffd43b';
+          const color = node.orgType === 'medical' ? '#ff6b6b' :
+            node.orgType === 'police' ? '#4dabf7' : '#ffd43b';
 
           return (
             <CircleMarker

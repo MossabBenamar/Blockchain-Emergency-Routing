@@ -13,7 +13,8 @@ import { useSocketIO, useVehiclePositions } from './hooks/useSocketIO';
 import api from './services/api';
 import wsService from './services/websocket';
 import socketIOService from './services/socketio';
-import type { Node, Segment, Vehicle, OrgType, Mission, VehiclePosition, SimulationStatus } from './types';
+import type { Node, Segment, Vehicle, OrgType, Mission, VehiclePosition, SimulationStatus, RouteResult } from './types';
+import { RoutePlanningPanel } from './components/RoutePlanning/RoutePlanningPanel';
 import './App.css';
 
 // Demo data for when backend is not available
@@ -113,7 +114,7 @@ function App() {
   const [highlightedRoute, setHighlightedRoute] = useState<string[]>([]);
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([]);
   const [showMissionPanel, setShowMissionPanel] = useState(false);
-  
+
   // Route planning state
   const [showRoutePlanningPanel, setShowRoutePlanningPanel] = useState(false);
   const [startPoint, setStartPoint] = useState<[number, number] | null>(null);
@@ -128,18 +129,18 @@ function App() {
 
   // WebSocket connection
   const { isConnected } = useWebSocket();
-  
+
   // Socket.IO connection for real-time vehicle tracking
-  const { isConnected: isSocketIOConnected } = useSocketIO();
+  const { isConnected: _isSocketIOConnected } = useSocketIO();
   const socketIOPositions = useVehiclePositions();
-  
+
   // Merge Socket.IO positions with existing vehicle positions
   useEffect(() => {
     if (socketIOPositions.length > 0) {
       setVehiclePositions(socketIOPositions);
     }
   }, [socketIOPositions]);
-  
+
   // Update Socket.IO organization when org changes
   useEffect(() => {
     socketIOService.setOrganization(currentOrg);
@@ -442,8 +443,8 @@ function App() {
             if (fromNode?.lat !== undefined && fromNode?.lon !== undefined) {
               geometry.push([fromNode.lat, fromNode.lon]);
             }
-            if (toNode?.lat !== undefined && toNode?.lon !== undefined && 
-                !geometry.some(([lat, lon]) => lat === toNode.lat && lon === toNode.lon)) {
+            if (toNode?.lat !== undefined && toNode?.lon !== undefined &&
+              !geometry.some(([lat, lon]) => lat === toNode.lat && lon === toNode.lon)) {
               geometry.push([toNode.lat, toNode.lon]);
             }
           }
@@ -642,7 +643,7 @@ function App() {
               startPoint={startPoint}
               endPoint={endPoint}
               routePlanningMode={routePlanningMode}
-              center={nodes.length > 0 && nodes[0].lat !== undefined ? 
+              center={nodes.length > 0 && nodes[0].lat !== undefined ?
                 [nodes[0].lat, nodes[0].lon!] : [40.7589, -73.9851]}
               zoom={13}
             />
@@ -729,7 +730,7 @@ function App() {
         ) : showRoutePlanningPanel ? (
           <aside className="route-planning-sidebar">
             <RoutePlanningPanel
-              onRouteCalculated={(route) => {
+              onRouteCalculated={(route: RouteResult) => {
                 if (route.geometry) {
                   setRouteGeometry(route.geometry);
                 }
@@ -741,14 +742,14 @@ function App() {
               }}
               isLoading={isLoading}
               setIsLoading={setIsLoading}
-              onStartPointSelect={(lat, lon) => {
+              onStartPointSelect={(lat: number, lon: number) => {
                 if (lat === 0 && lon === 0) {
                   setStartPoint(null);
                 } else {
                   setStartPoint([lat, lon]);
                 }
               }}
-              onEndPointSelect={(lat, lon) => {
+              onEndPointSelect={(lat: number, lon: number) => {
                 if (lat === 0 && lon === 0) {
                   setEndPoint(null);
                 } else {

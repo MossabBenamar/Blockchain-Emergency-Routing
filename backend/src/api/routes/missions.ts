@@ -418,10 +418,10 @@ router.post('/routes/calculate', asyncHandler(async (req: Request, res: Response
 
   // Check if using coordinate-based routing (new method)
   if (request.originLat !== undefined && request.originLon !== undefined &&
-      request.destLat !== undefined && request.destLon !== undefined) {
+    request.destLat !== undefined && request.destLon !== undefined) {
     // Coordinate-based routing using OSRM
     const osrmService = (await import('../../services/osrm/osrmService')).osrmService;
-    
+
     const osrmResult = await osrmService.calculateRoute(
       request.originLat,
       request.originLon,
@@ -513,12 +513,56 @@ router.post('/routes/calculate', asyncHandler(async (req: Request, res: Response
   }
 
   // Calculate route
-  const result = await routingService.calculateRoute(
+  let result = await routingService.calculateRoute(
     request.originNode,
     request.destNode,
     vehiclePriority,
     segmentMap as any
   );
+
+  if (!result.success) {
+    res.status(400).json({
+      success: false,
+      error: result.error || 'Failed to calculate route',
+    });
+    return;
+  }
+
+  // SIMULATE ACTIVATION LOGIC: Check for strict conflicts
+  // This ensures the Preview matches exactly what will happen when "Launch" is clicked.
+  const blockedSegments: string[] = [];
+  for (const segmentId of result.path) {
+    const segment = segmentMap.get(segmentId);
+    if (segment && segment.status !== 'free') {
+      const segmentPriority = segment.priorityLevel ?? 5;
+      if (vehiclePriority < segmentPriority) {
+        // Can preempt - not blocked
+      } else {
+        // Same or higher priority - Blocked by FCFS or strict priority
+        // Launch logic would reject this, so Preview must too.
+        blockedSegments.push(segmentId);
+      }
+    }
+  }
+
+  // If the initial "weighted" path hit blocked segments (despite penalties),
+  // we must re-calculate with HARD exclusions, just like 'create-and-activate' does.
+  if (blockedSegments.length > 0) {
+    const alternativeResult = await routingService.calculateRoute(
+      request.originNode,
+      request.destNode,
+      vehiclePriority,
+      segmentMap as any,
+      blockedSegments // Hard exclude
+    );
+
+    if (alternativeResult.success) {
+      result = alternativeResult;
+    }
+    // If no alternative exists, we return the original (blocked) path to let the user see the failure/error eventually,
+    // or we could return an error here. For now, showing the blocked path with analysis warnings is acceptable,
+    // but typically we want to show the route we *tried* to take.
+  }
 
   if (!result.success) {
     res.status(400).json({

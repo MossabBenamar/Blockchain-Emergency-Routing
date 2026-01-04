@@ -39,7 +39,7 @@ export function MissionPanel({
   // Form state
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [destNode, setDestNode] = useState<string>('');
-  
+
   // Route preview state
   const [routePreview, setRoutePreview] = useState<RouteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,11 +58,11 @@ export function MissionPanel({
       // Find the nearest node to the vehicle's current position
       let nearestNode: Node | null = null;
       let minDistance = Infinity;
-      
+
       nodes.forEach(node => {
         if (node.lat !== undefined && node.lon !== undefined) {
           const distance = Math.sqrt(
-            Math.pow(node.lat - vehiclePosition.lat!, 2) + 
+            Math.pow(node.lat - vehiclePosition.lat!, 2) +
             Math.pow(node.lon - vehiclePosition.lon!, 2)
           );
           if (distance < minDistance) {
@@ -71,12 +71,13 @@ export function MissionPanel({
           }
         }
       });
-      
+
       if (nearestNode) {
-        return nearestNode.id;
+        // We know nearestNode is a Node, it has an id
+        return (nearestNode as Node).id;
       }
     }
-    
+
     // Fallback: find vehicle's home base (POI node matching org type)
     const vehicle = vehicles.find(v => v.vehicleId === vehicleId);
     if (vehicle) {
@@ -85,7 +86,7 @@ export function MissionPanel({
         return homeBase.id;
       }
     }
-    
+
     return null;
   }, [vehiclePositions, nodes, vehicles, poiNodes]);
 
@@ -207,12 +208,13 @@ export function MissionPanel({
 
       if (response.success && response.data) {
         onMissionCreated(response.data.mission);
-        onRouteCalculated(response.data.route.path, response.data.route);
-        // Reset form after short delay to show the route
+        // Clear any existing route preview as we are launching directly
+        onClearRoute();
+
+        // Reset form after short delay
         setTimeout(() => {
           setSelectedVehicle('');
           setDestNode('');
-          setRoutePreview(null);
         }, 2000);
       } else {
         setError(response.error || 'Failed to create mission');
@@ -231,7 +233,7 @@ export function MissionPanel({
 
     try {
       const response = await api.completeMission(missionId);
-      
+
       if (response.success && response.data) {
         onMissionCompleted(response.data);
       } else {
@@ -253,7 +255,7 @@ export function MissionPanel({
 
     try {
       const response = await api.abortMission(missionId, 'Manual abort by dispatcher');
-      
+
       if (response.success && response.data) {
         onMissionCompleted(response.data);
       } else {
@@ -299,11 +301,11 @@ export function MissionPanel({
       {/* Create Mission Form */}
       <div className="create-mission-section">
         <h4>Create New Mission</h4>
-        
+
         <div className="form-group">
           <label>Vehicle</label>
-          <select 
-            value={selectedVehicle} 
+          <select
+            value={selectedVehicle}
             onChange={(e) => setSelectedVehicle(e.target.value)}
             disabled={isLoading}
           >
@@ -320,10 +322,10 @@ export function MissionPanel({
         {selectedVehicle && originNode && (
           <div className="form-group">
             <label>Origin (Vehicle Location)</label>
-            <input 
-              type="text" 
-              value={getNodeLabel(originNode)} 
-              disabled 
+            <input
+              type="text"
+              value={getNodeLabel(originNode)}
+              disabled
               className="readonly-input"
               title="Origin is automatically determined from vehicle's current location"
             />
@@ -332,8 +334,8 @@ export function MissionPanel({
 
         <div className="form-group">
           <label>Destination</label>
-          <select 
-            value={destNode} 
+          <select
+            value={destNode}
             onChange={(e) => setDestNode(e.target.value)}
             disabled={isLoading || !selectedVehicle}
           >
@@ -356,85 +358,20 @@ export function MissionPanel({
         </div>
 
         <div className="button-row">
-          <button 
-            className="btn btn-secondary"
-            onClick={handleCalculateRoute}
-            disabled={isLoading || !selectedVehicle || !originNode || !destNode}
-          >
-            📍 Preview Route
-          </button>
-          <button 
-            className="btn btn-primary"
+          <button
+            className="btn btn-primary btn-full"
             onClick={handleQuickCreate}
             disabled={isLoading || !selectedVehicle || !originNode || !destNode}
           >
-            🚀 Quick Launch
+            🚀 Launch Mission
           </button>
         </div>
       </div>
 
-      {/* Route Preview */}
-      {routePreview && (
-        <div className="route-preview">
-          <h4>Route Preview</h4>
-          
-          <div className="route-stats">
-            <div className="stat">
-              <span className="stat-label">Path Length</span>
-              <span className="stat-value">{routePreview.path.length} segments</span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">Est. Time</span>
-              <span className="stat-value">{formatTime(routePreview.estimatedTime)}</span>
-            </div>
-          </div>
-
-          <div className="route-path">
-            <span className="path-label">Route:</span>
-            <div className="path-nodes">
-              {routePreview.nodePath.map((nodeId, idx) => (
-                <span key={nodeId} className="path-node">
-                  {idx > 0 && <span className="path-arrow">→</span>}
-                  <span className={nodes.find(n => n.id === nodeId)?.type === 'poi' ? 'poi-node' : ''}>
-                    {getNodeLabel(nodeId)}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {routePreview.analysis && (
-            <div className="route-analysis">
-              <div className={`analysis-item ${routePreview.analysis.freeSegments > 0 ? 'free' : ''}`}>
-                <span className="dot free"></span>
-                {routePreview.analysis.freeSegments} free
-              </div>
-              <div className={`analysis-item ${routePreview.analysis.reservedSegments > 0 ? 'reserved' : ''}`}>
-                <span className="dot reserved"></span>
-                {routePreview.analysis.reservedSegments} reserved
-              </div>
-              {routePreview.analysis.potentialConflicts.length > 0 && (
-                <div className="analysis-item conflicts">
-                  ⚠️ {routePreview.analysis.potentialConflicts.length} potential conflicts
-                </div>
-              )}
-            </div>
-          )}
-
-          <button 
-            className="btn btn-success btn-full"
-            onClick={handleCreateMission}
-            disabled={isLoading}
-          >
-            ✓ Confirm & Launch Mission
-          </button>
-        </div>
-      )}
-
       {/* Active Missions */}
       <div className="active-missions-section">
         <h4>Active Missions ({activeMissions.filter(m => m.orgType === currentOrg).length})</h4>
-        
+
         {activeMissions.filter(m => m.orgType === currentOrg).length === 0 ? (
           <div className="no-missions">
             <span>No active missions</span>
@@ -451,7 +388,7 @@ export function MissionPanel({
                       {mission.status}
                     </span>
                   </div>
-                  
+
                   <div className="mission-info">
                     <div className="info-row">
                       <span className="info-label">Vehicle:</span>
@@ -472,14 +409,14 @@ export function MissionPanel({
                   </div>
 
                   <div className="mission-actions">
-                    <button 
+                    <button
                       className="btn btn-sm btn-success"
                       onClick={() => handleCompleteMission(mission.missionId)}
                       disabled={isLoading}
                     >
                       ✓ Complete
                     </button>
-                    <button 
+                    <button
                       className="btn btn-sm btn-danger"
                       onClick={() => handleAbortMission(mission.missionId)}
                       disabled={isLoading}

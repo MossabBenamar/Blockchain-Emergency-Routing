@@ -42,8 +42,8 @@ export const GridMap: React.FC<GridMapProps> = ({
   const gridSize = useMemo(() => {
     let maxX = 0, maxY = 0;
     nodes.forEach((node) => {
-      maxX = Math.max(maxX, node.x);
-      maxY = Math.max(maxY, node.y);
+      maxX = Math.max(maxX, node.x || 0);
+      maxY = Math.max(maxY, node.y || 0);
     });
     return { cols: maxX + 1, rows: maxY + 1 };
   }, [nodes]);
@@ -56,8 +56,8 @@ export const GridMap: React.FC<GridMapProps> = ({
     const node = nodeMap.get(nodeId);
     if (!node) return { x: 0, y: 0 };
     return {
-      x: node.x * CELL_SIZE + PADDING,
-      y: node.y * CELL_SIZE + PADDING,
+      x: (node.x || 0) * CELL_SIZE + PADDING,
+      y: (node.y || 0) * CELL_SIZE + PADDING,
     };
   };
 
@@ -80,7 +80,7 @@ export const GridMap: React.FC<GridMapProps> = ({
     if (isInHighlightedRoute(segment.id)) {
       return '#ffd43b';
     }
-    
+
     // Dark red for reserved/occupied segments
     return '#8b0000';
   };
@@ -113,7 +113,7 @@ export const GridMap: React.FC<GridMapProps> = ({
   // Calculate animated vehicle position along a segment
   const getVehiclePosition = (position: VehiclePosition) => {
     if (!position.currentSegment) return null;
-    
+
     const segment = segmentMap.get(position.currentSegment);
     if (!segment) return null;
 
@@ -155,13 +155,13 @@ export const GridMap: React.FC<GridMapProps> = ({
               strokeWidth="1"
             />
           </pattern>
-          
+
           {/* Glow filter */}
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feGaussianBlur stdDeviation="3" result="coloredBlur" />
             <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode in="coloredBlur" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
         </defs>
@@ -189,8 +189,8 @@ export const GridMap: React.FC<GridMapProps> = ({
             const dashArray = getSegmentDashArray(segment);
 
             return (
-              <g 
-                key={segment.id} 
+              <g
+                key={segment.id}
                 className={`segment-group ${isSelected ? 'selected' : ''} ${isHighlighted ? 'highlighted' : ''} ${activeMission ? 'active-route' : ''}`}
                 onClick={() => onSegmentClick(segment.id)}
                 style={{ cursor: 'pointer' }}
@@ -219,7 +219,7 @@ export const GridMap: React.FC<GridMapProps> = ({
                   className={`segment-glow ${isHighlighted ? 'route-glow' : ''}`}
                   filter="url(#glow)"
                 />
-                
+
                 {/* Main segment line */}
                 <line
                   x1={fromCoords.x}
@@ -297,7 +297,7 @@ export const GridMap: React.FC<GridMapProps> = ({
                     className="node-glow"
                   />
                 )}
-                
+
                 {/* Node circle */}
                 <circle
                   cx={coords.x}
@@ -407,7 +407,7 @@ export const GridMap: React.FC<GridMapProps> = ({
                       className="vehicle-trail"
                     />
                   )}
-                  
+
                   {/* Vehicle glow */}
                   <circle
                     cx={coords.x}

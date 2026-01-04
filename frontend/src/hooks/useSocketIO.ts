@@ -1,6 +1,6 @@
 // Custom hook for Socket.IO connectivity
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import socketIOService from '../services/socketio';
 import type { VehiclePosition } from '../types';
 

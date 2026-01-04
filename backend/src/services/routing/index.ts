@@ -105,15 +105,15 @@ class PriorityQueue<T> {
 
   dequeue(): T | undefined {
     if (this.items.length === 0) return undefined;
-    
+
     const result = this.items[0].item;
     const last = this.items.pop();
-    
+
     if (this.items.length > 0 && last) {
       this.items[0] = last;
       this.bubbleDown(0);
     }
-    
+
     return result;
   }
 
@@ -178,11 +178,13 @@ function calculateEdgeWeight(
       // Our vehicle has higher priority - can preempt, small penalty
       return baseWeight * 2;
     } else if (vehiclePriority === reservedPriority) {
-      // Same priority - moderate penalty (might cause conflict)
-      return baseWeight * 5;
+      // Same priority - FCFS rule means we WILL be blocked if someone else has it.
+      // High penalty to force A* to find an alternative route (detour)
+      return baseWeight * 2000;
     } else {
-      // Lower priority - high penalty (will be denied)
-      return baseWeight * 20;
+      // Lower priority - high penalty (will be denied by conflict service)
+      // Must be effectively infinite to match 'Activate' logic which blocks these segments completely
+      return baseWeight * 10000;
     }
   }
 
@@ -194,7 +196,7 @@ function getSegmentBetweenNodes(fromNode: string, toNode: string): string | unde
   const MAP_EDGES = getMapEdges();
   for (const edge of MAP_EDGES) {
     if ((edge.from === fromNode && edge.to === toNode) ||
-        (edge.bidirectional && edge.from === toNode && edge.to === fromNode)) {
+      (edge.bidirectional && edge.from === toNode && edge.to === fromNode)) {
       return edge.id;
     }
   }
@@ -210,6 +212,31 @@ function getSegmentBetweenNodes(fromNode: string, toNode: string): string | unde
  * @param segmentStatuses Current status of all segments from blockchain
  * @param excludeSegments Optional array of segment IDs to exclude (blocked)
  * @returns RouteResult with path and metadata
+ */
+// Haversine distance for A* heuristic
+function calculateHeuristic(nodeA: string, nodeB: string, graph: Graph): number {
+  const nA = graph.nodes.get(nodeA);
+  const nB = graph.nodes.get(nodeB);
+
+  if (!nA || !nB || nA.lat === undefined || nA.lon === undefined || nB.lat === undefined || nB.lon === undefined) {
+    return 0;
+  }
+
+  const R = 6371; // Earth's radius in km
+  const dLat = (nB.lat - nA.lat) * Math.PI / 180;
+  const dLon = (nB.lon - nA.lon) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(nA.lat * Math.PI / 180) * Math.cos(nB.lat * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+}
+
+/**
+ * Find the optimal route using A* Algorithm
+ * A* uses a heuristic (straight-line distance) to guide the search towards the goal,
+ * making it more efficient for spatial graphs like maps.
  */
 export async function calculateRoute(
   originNode: string,
@@ -233,73 +260,80 @@ export async function calculateRoute(
     return { success: true, path: [], nodePath: [originNode], totalWeight: 0, estimatedTime: 0 };
   }
 
-  // Dijkstra's algorithm
-  const distances = new Map<string, number>();
+  // A* Algorithm structures
+  // gScore: Cost from start to node
+  const gScore = new Map<string, number>();
+  // fScore: Estimated total cost (gScore + heuristic)
+  const fScore = new Map<string, number>();
+
   const previous = new Map<string, string | null>();
-  const visited = new Set<string>(); // Track visited nodes to prevent infinite loops
   const pq = new PriorityQueue<string>();
 
-  // Initialize distances
+  // Initialize scores
   for (const nodeId of graph.nodes.keys()) {
-    distances.set(nodeId, nodeId === originNode ? 0 : Infinity);
+    gScore.set(nodeId, Infinity);
+    fScore.set(nodeId, Infinity);
     previous.set(nodeId, null);
   }
 
-  pq.enqueue(originNode, 0);
+  gScore.set(originNode, 0);
+  fScore.set(originNode, calculateHeuristic(originNode, destNode, graph));
 
-  // Set to track excluded segments
+  pq.enqueue(originNode, fScore.get(originNode)!);
+
   const excludeSet = new Set(excludeSegments);
+  const visited = new Set<string>();
 
   while (!pq.isEmpty()) {
     const current = pq.dequeue()!;
-    
-    // Skip if already visited (processed)
+    // const current = currentcurrent; // Fix: pq.dequeue returns string directly
+
+    // If we reached the destination, we are done
+    if (current === destNode) break;
+
+    // Skip if we found a shorter path to this node already (standard A* optimization)
+    // Actually, simply using visited set is safer for performance in simple graphs
     if (visited.has(current)) continue;
     visited.add(current);
 
-    // Found destination
-    if (current === destNode) break;
-
-    const currentDist = distances.get(current)!;
-
-    // Explore neighbors
     const neighbors = graph.adjacency.get(current);
     if (!neighbors) continue;
 
     for (const [neighbor, edgeInfo] of neighbors) {
-      // Skip visited nodes
-      if (visited.has(neighbor)) continue;
-      
-      // Skip excluded segments
       if (excludeSet.has(edgeInfo.edgeId)) continue;
 
-      // Get segment status from blockchain
+      // Get segment status and calculate weight
       const segmentStatus = segmentStatuses.get(edgeInfo.edgeId);
-
-      // Calculate weighted edge cost
       const edgeWeight = calculateEdgeWeight(edgeInfo.weight, segmentStatus, vehiclePriority);
 
-      const newDist = currentDist + edgeWeight;
+      // Current gScore via this path
+      const tentativeGScore = gScore.get(current)! + edgeWeight;
 
-      if (newDist < (distances.get(neighbor) || Infinity)) {
-        distances.set(neighbor, newDist);
+      if (tentativeGScore < gScore.get(neighbor)!) {
+        // Found a better path
         previous.set(neighbor, current);
-        pq.enqueue(neighbor, newDist);
+        gScore.set(neighbor, tentativeGScore);
+
+        const h = calculateHeuristic(neighbor, destNode, graph);
+        fScore.set(neighbor, tentativeGScore + h);
+
+        // Add to priority queue with new fScore
+        pq.enqueue(neighbor, tentativeGScore + h);
       }
     }
   }
 
   // Check if path was found
-  if (previous.get(destNode) === null && destNode !== originNode) {
+  if (previous.get(destNode) === null) {
     return { success: false, path: [], nodePath: [], totalWeight: 0, estimatedTime: 0, error: 'No path found to destination' };
   }
 
   // Reconstruct path
   const nodePath: string[] = [];
-  let current: string | null = destNode;
-  while (current !== null) {
-    nodePath.unshift(current);
-    current = previous.get(current) || null;
+  let curr: string | null = destNode;
+  while (curr !== null) {
+    nodePath.unshift(curr);
+    curr = previous.get(curr) || null;
   }
 
   // Convert node path to segment path
@@ -311,16 +345,15 @@ export async function calculateRoute(
     }
   }
 
-  const totalWeight = distances.get(destNode) || 0;
-  // Convert weight (km) to time (seconds) - assuming average speed of 50 km/h for emergency vehicles
-  const estimatedTime = (totalWeight / 50) * 3600; // Convert hours to seconds
+  const totalWeight = gScore.get(destNode) || 0;
+  // Convert weight (km) to time (seconds) - assuming average speed of 50 km/h
+  const estimatedTime = (totalWeight / 50) * 3600;
 
-  // Build route geometry using OSRM for actual road-following routes
+  // Build route geometry using OSRM or fallback
   let geometry: Array<[number, number]> | undefined;
   const MAP_NODES = getMapNodes();
   const nodeMap = new Map(MAP_NODES.map(n => [n.id, n]));
 
-  // Collect coordinates for all nodes in the path
   const waypoints: Array<[number, number]> = [];
   for (const nodeId of nodePath) {
     const node = nodeMap.get(nodeId);
@@ -329,7 +362,6 @@ export async function calculateRoute(
     }
   }
 
-  // Use OSRM to get actual road-following geometry if we have at least 2 waypoints
   if (waypoints.length >= 2) {
     try {
       const osrmResult = await osrmService.calculateRouteWithWaypoints(waypoints, { profile: 'driving' });
@@ -341,7 +373,6 @@ export async function calculateRoute(
     }
   }
 
-  // Fallback to segment geometry if OSRM failed or is unavailable
   if (!geometry || geometry.length === 0) {
     const fallbackGeometry: Array<[number, number]> = [];
     const MAP_EDGES = getMapEdges();
@@ -406,9 +437,9 @@ export async function findAlternativeRoutes(
   for (let i = 0; i < primaryPath.length && alternatives.length < numAlternatives; i++) {
     // Exclude one segment from the primary path
     const excludeSegments = [primaryPath[i]];
-    
+
     const altRoute = await calculateRoute(originNode, destNode, vehiclePriority, segmentStatuses, excludeSegments);
-    
+
     // Only add if it's a valid, different route
     if (altRoute.success && altRoute.path.join(',') !== primaryPath.join(',')) {
       // Check if this alternative is already in the list
@@ -446,7 +477,7 @@ export function analyzeRoute(
 
   for (const segmentId of path) {
     const status = segmentStatuses.get(segmentId);
-    
+
     if (!status || status.status === 'free') {
       freeSegments++;
     } else if (status.status === 'occupied') {

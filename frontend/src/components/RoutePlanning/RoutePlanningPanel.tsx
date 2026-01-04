@@ -1,7 +1,7 @@
 // Route Planning Panel Component
 // Allows users to calculate routes by selecting start and end points on the map
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import api from '../../services/api';
 import type { RouteResult } from '../../types';
 import './RoutePlanningPanel.css';
@@ -153,15 +153,15 @@ export function RoutePlanningPanel({
               <div className="result-item">
                 <span className="result-label">Distance:</span>
                 <span className="result-value">
-                  {routeResult.distanceKm ? `${routeResult.distanceKm.toFixed(2)} km` : 
-                   routeResult.totalWeight ? `${routeResult.totalWeight.toFixed(2)} km` : 'N/A'}
+                  {routeResult.distanceKm ? `${routeResult.distanceKm.toFixed(2)} km` :
+                    routeResult.totalWeight ? `${routeResult.totalWeight.toFixed(2)} km` : 'N/A'}
                 </span>
               </div>
               <div className="result-item">
                 <span className="result-label">Duration:</span>
                 <span className="result-value">
                   {routeResult.durationMinutes ? `${routeResult.durationMinutes} min` :
-                   routeResult.estimatedTime ? `${Math.round(routeResult.estimatedTime / 60)} min` : 'N/A'}
+                    routeResult.estimatedTime ? `${Math.round(routeResult.estimatedTime / 60)} min` : 'N/A'}
                 </span>
               </div>
             </div>
