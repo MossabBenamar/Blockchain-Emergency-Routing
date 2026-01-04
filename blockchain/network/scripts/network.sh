@@ -13,6 +13,16 @@ print_info() { echo -e "\033[0;34m[INFO]\033[0m $1"; }
 print_success() { echo -e "\033[0;32m[SUCCESS]\033[0m $1"; }
 print_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 
+# Detect docker compose command (v2 or v1)
+if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+  DOCKER_COMPOSE="docker compose"
+elif command -v docker-compose &> /dev/null; then
+  DOCKER_COMPOSE="docker-compose"
+else
+  print_error "Neither 'docker compose' (v2) nor 'docker-compose' (v1) is available"
+  exit 1
+fi
+
 # Mode check
 MODE=$1
 
@@ -20,11 +30,11 @@ if [ "$MODE" == "up" ]; then
   print_info "Starting network setup..."
 elif [ "$MODE" == "down" ]; then
   print_info "Stopping network..."
-  docker-compose -f ../docker/docker-compose-net.yaml down --volumes --remove-orphans
+  $DOCKER_COMPOSE -f ../docker/docker-compose-net.yaml down --volumes --remove-orphans
   exit 0
 elif [ "$MODE" == "clean" ]; then
   print_info "Cleaning up..."
-  docker-compose -f ../docker/docker-compose-net.yaml down --volumes --remove-orphans
+  $DOCKER_COMPOSE -f ../docker/docker-compose-net.yaml down --volumes --remove-orphans
   sudo rm -rf ../organizations/peerOrganizations
   sudo rm -rf ../organizations/ordererOrganizations
   sudo rm -rf ../channel-artifacts/*
@@ -81,7 +91,7 @@ configtxgen -profile EmergencyChannel -outputCreateChannelTx ../channel-artifact
 # 4. START NETWORK
 # ====================================================
 print_info "Starting containers..."
-docker-compose -f ../docker/docker-compose-net.yaml up -d
+$DOCKER_COMPOSE -f ../docker/docker-compose-net.yaml up -d
 
 print_info "Waiting 10 seconds for Orderer and peers to fully start..."
 sleep 10
