@@ -9,104 +9,195 @@ This system enables multiple emergency services (Medical, Police) to coordinate 
 ### Features
 
 - **Vehicle Registration**: Register emergency vehicles with priority levels
-- **Segment Reservation**: Reserve road segments for emergency routes
+- **Mission Management**: Create and manage emergency missions with route planning
+- **Path Calculation**: A* algorithm with priority-based dynamic routing
+- **Real-World Maps**: Manhattan map with real coordinates (lat/lon)
+- **OSRM Integration**: Optional integration with Open Source Routing Machine for real-world route geometry
 - **Priority-Based Conflict Resolution**: Higher priority vehicles can preempt lower priority reservations
-- **Same-Priority Negotiation**: Conflicts between same-priority vehicles require negotiation
+- **Automatic Rerouting**: Lower-priority missions automatically rerouted when preempted
+- **Real-Time Updates**: WebSocket/Socket.IO for live vehicle tracking and mission updates
+- **Vehicle Simulation**: Discrete segment-by-segment movement simulation
 - **Audit Trail**: All actions are recorded on the blockchain
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     FABRIC NETWORK                           │
-│                                                              │
-│  ┌─────────────────┐          ┌─────────────────┐          │
-│  │   OrgMedical    │          │   OrgPolice     │          │
-│  │                 │          │                 │          │
-│  │ peer0.medical   │          │ peer0.police    │          │
-│  │ [CouchDB]       │          │ [CouchDB]       │          │
-│  └─────────────────┘          └─────────────────┘          │
-│                                                              │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │                 Orderer (Raft)                        │  │
-│  └──────────────────────────────────────────────────────┘  │
-│                                                              │
-│  Channel: emergency-channel                                  │
-│  Chaincode: routing (Go)                                     │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         CLIENT LAYER                                 │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  Frontend (React + TypeScript + Leaflet)                     │  │
+│  │  - Interactive map visualization                             │  │
+│  │  - Mission management UI                                     │  │
+│  │  - Real-time vehicle tracking                                │  │
+│  │  - Route planning and visualization                          │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              │ HTTP/REST + WebSocket
+                              │
+┌─────────────────────────────────────────────────────────────────────┐
+│                         APPLICATION LAYER                            │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  Backend API (Node.js + TypeScript + Express)                │  │
+│  │  - REST API endpoints                                        │  │
+│  │  - A* Pathfinding Algorithm                                  │  │
+│  │  - Conflict Resolution Service                               │  │
+│  │  - Mission Management Service                                │  │
+│  │  - Vehicle Simulation Service                                │  │
+│  │  - WebSocket/Socket.IO Server                                │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  External Services (Optional)                                │  │
+│  │  - OSRM (Open Source Routing Machine)                        │  │
+│  │    For real-world route geometry calculation                 │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              │ gRPC + Fabric Gateway SDK
+                              │
+┌─────────────────────────────────────────────────────────────────────┐
+│                      BLOCKCHAIN LAYER                                │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  Hyperledger Fabric Network                                  │  │
+│  │                                                               │  │
+│  │  ┌─────────────────┐          ┌─────────────────┐           │  │
+│  │  │   OrgMedical    │          │   OrgPolice     │           │  │
+│  │  │                 │          │                 │           │  │
+│  │  │ peer0.medical   │          │ peer0.police    │           │  │
+│  │  │ [CouchDB]       │          │ [CouchDB]       │           │  │
+│  │  └─────────────────┘          └─────────────────┘           │  │
+│  │                                                               │  │
+│  │  ┌──────────────────────────────────────────────────────┐   │  │
+│  │  │        Orderer (Raft Consensus)                      │   │  │
+│  │  └──────────────────────────────────────────────────────┘   │  │
+│  │                                                               │  │
+│  │  Channel: emergency-channel                                   │  │
+│  │  Chaincode: routing (Go, CCAAS deployment)                   │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5x5 Grid Map
+### Map Structure
 
-```
-     N1 ──── N2 ──── N3 ──── N4 ──── N5
-     │       │       │       │       │
-     N6 ──── N7 ──── N8 ──── N9 ──── N10
-     │       │       │       │       │
-     N11 ─── N12 ─── N13 ─── N14 ─── N15
-     │       │       │       │       │
-     N16 ─── N17 ─── N18 ─── N19 ─── N20
-     │       │       │       │       │
-     N21 ─── N22 ─── N23 ─── N24 ─── N25
+The system uses a **Manhattan-based map** with real-world coordinates:
 
-POIs:
-- N1: Hospital (Medical HQ)
-- N25: Police Station
-- N13: Central Hub
-```
+- **Real Coordinates**: Uses latitude/longitude coordinates for Manhattan, NY
+- **POIs (Points of Interest)**: 
+  - Hospitals (Medical organizations)
+  - Police Stations
+  - Fire Stations
+  - Key intersections
+- **Road Network**: Street segments connecting intersections and POIs
+- **Bidirectional Segments**: Most segments allow travel in both directions
+
+The map covers Lower Manhattan (Canal St) to Central Park South (59th St), providing a realistic urban environment for emergency vehicle routing.
 
 ## Prerequisites
 
-- Docker & Docker Compose
-- Go 1.21+ (for chaincode development)
-- Hyperledger Fabric binaries (optional, can use Docker)
+- **Docker** & **Docker Compose** (v1 or v2)
+- **Node.js** >= 18.0.0 (for backend and frontend)
+- **Go** 1.21+ (for building chaincode Docker image)
+- **Hyperledger Fabric binaries** (`cryptogen` and `configtxgen`)
 
-### Installing Fabric Binaries (optional)
+### Installing Fabric Binaries
+
+The network setup script requires Fabric binaries in `blockchain/network/bin/`. Install them as follows:
 
 ```bash
+# Create the bin directory
+mkdir -p blockchain/network/bin
+
+# Download and install Fabric binaries
 curl -sSLO https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh
 chmod +x install-fabric.sh
 ./install-fabric.sh --fabric-version 2.5.0 binary
+
+# Copy binaries to the expected location (adjust path if needed)
+cp ~/fabric-samples/bin/cryptogen blockchain/network/bin/
+cp ~/fabric-samples/bin/configtxgen blockchain/network/bin/
+chmod +x blockchain/network/bin/*
+
+# Clean up
+rm install-fabric.sh
 ```
 
 ## Quick Start
 
-### 1. Start the Network
+> **For detailed setup instructions, see [STARTUP_GUIDE.md](STARTUP_GUIDE.md)**
 
+### Automated Setup (Recommended)
+
+The easiest way to start the entire system:
+
+```bash
+# First time: Install dependencies
+cd backend && npm install && cd ../frontend && npm install && cd ..
+
+# Build chaincode image and start everything
+./start.sh
+```
+
+This script automatically:
+- Builds the chaincode Docker image
+- Starts the Fabric network
+- Deploys chaincode (CCAAS)
+- Initializes segments and test vehicles
+- Fixes file permissions
+
+Then start the backend and frontend in separate terminals (see commands printed by `start.sh`).
+
+### Manual Setup
+
+**1. Install Dependencies**
+```bash
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+```
+
+**2. Build Chaincode Image**
+```bash
+cd blockchain/chaincode/routing
+docker build -t routing-chaincode:1.0 .
+cd ../../..
+```
+
+**3. Start Network**
 ```bash
 make network-up
 ```
 
-This will:
-- Generate crypto material for all organizations
-- Start all Docker containers (CAs, peers, orderer, CouchDB)
-- Create the `emergency-channel`
-- Join all peers to the channel
-
-### 2. Deploy Chaincode
-
+**4. Deploy Chaincode (CCAAS)**
 ```bash
-make deploy-chaincode
+./blockchain/network/scripts/deploy-ccaas.sh
 ```
 
-This will:
-- Package the Go chaincode
-- Install on all peers
-- Approve for both organizations
-- Commit to the channel
+The deployment script automatically:
+- Packages the chaincode for CCAAS
+- Installs on both peers
+- Approves for both organizations
+- Commits to the channel
+- Initializes 40 road segments
+- Registers test vehicles (2 Medical P1, 2 Police P2)
 
-### 3. Initialize Segments
+**5. Start Backend and Frontend**
 
+Terminal 1 - Medical Backend:
 ```bash
-make init-chaincode
+cd backend
+ORG_TYPE=medical PORT=3001 WS_PORT=3002 npm run dev
 ```
 
-This creates the 40 road segments (20 horizontal + 20 vertical) in the world state.
-
-### 4. Test Chaincode
-
+Terminal 2 - Police Backend:
 ```bash
-make test-chaincode
+cd backend
+ORG_TYPE=police PORT=3003 WS_PORT=3004 MSP_ID=PoliceMSP PEER_ENDPOINT=localhost:9051 PEER_HOST_ALIAS=peer0.police.emergency.net npm run dev
+```
+
+Terminal 3 - Frontend:
+```bash
+cd frontend
+npm run dev
 ```
 
 ## Manual Commands
@@ -128,94 +219,76 @@ cd blockchain/network/scripts
 ./network.sh status
 ```
 
-### Chaincode Operations
+### Using the CLI Container
 
 ```bash
 # Enter CLI container
+make shell
+# or
 docker exec -it cli bash
 
-# Register a vehicle (Medical)
-peer chaincode invoke \
-  -o orderer.emergency.net:7050 \
-  --tls --cafile $ORDERER_CA \
-  -C emergency-channel \
-  -n routing \
-  -c '{"function":"VehicleContract:RegisterVehicle","Args":["AMB-001","medical","ambulance","1"]}'
+# Query all segments
+peer chaincode query -C emergency-channel -n routing \
+  -c '{"function":"SegmentContract:GetAllSegments","Args":[]}'
 
-# Get all vehicles
-peer chaincode query \
-  -C emergency-channel \
-  -n routing \
+# Query all vehicles
+peer chaincode query -C emergency-channel -n routing \
   -c '{"function":"VehicleContract:GetAllVehicles","Args":[]}'
 
-# Reserve a segment
-peer chaincode invoke \
-  -o orderer.emergency.net:7050 \
-  --tls --cafile $ORDERER_CA \
-  -C emergency-channel \
-  -n routing \
-  -c '{"function":"SegmentContract:ReserveSegment","Args":["S1","AMB-001","MISSION-001","1"]}'
-
-# Get segment status
-peer chaincode query \
-  -C emergency-channel \
-  -n routing \
+# Get specific segment
+peer chaincode query -C emergency-channel -n routing \
   -c '{"function":"SegmentContract:GetSegment","Args":["S1"]}'
-
-# Release a segment
-peer chaincode invoke \
-  -o orderer.emergency.net:7050 \
-  --tls --cafile $ORDERER_CA \
-  -C emergency-channel \
-  -n routing \
-  -c '{"function":"SegmentContract:ReleaseSegment","Args":["S1","AMB-001"]}'
 ```
 
-### Switch to Police Organization
-
-```bash
-# In CLI container
-export CORE_PEER_ADDRESS=peer0.police.emergency.net:9051
-export CORE_PEER_LOCALMSPID=PoliceMSP
-export CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/police.emergency.net/peers/peer0.police.emergency.net/tls/ca.crt
-export CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/police.emergency.net/users/Admin@police.emergency.net/msp
-
-# Now commands run as Police org
-peer chaincode invoke ... -c '{"function":"VehicleContract:RegisterVehicle","Args":["POL-001","police","patrol_car","3"]}'
-```
+> **Note**: For full chaincode interaction, use the Backend API or see [STARTUP_GUIDE.md](STARTUP_GUIDE.md) for detailed CLI examples.
 
 ## Project Structure
 
 ```
 emergency-routing/
+├── backend/                               # Node.js/TypeScript API server
+│   ├── src/
+│   │   ├── services/                      # Business logic
+│   │   ├── routes/                        # API endpoints
+│   │   └── config/                        # Configuration
+│   └── package.json
+├── frontend/                              # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/                    # UI components
+│   │   ├── services/                      # API clients
+│   │   └── App.tsx
+│   └── package.json
 ├── blockchain/
 │   ├── network/
+│   │   ├── bin/                           # Fabric binaries (cryptogen, configtxgen)
 │   │   ├── docker/
 │   │   │   ├── docker-compose-ca.yaml     # Certificate Authorities
-│   │   │   ├── docker-compose-net.yaml    # Peers, Orderer, CouchDB
-│   │   │   └── .env                       # Environment variables
+│   │   │   └── docker-compose-net.yaml    # Peers, Orderer, CouchDB
 │   │   ├── configtx/
 │   │   │   └── configtx.yaml              # Channel configuration
-│   │   ├── organizations/
+│   │   ├── organizations/                 # Crypto material (generated)
 │   │   │   └── cryptogen/
-│   │   │       └── crypto-config.yaml     # Crypto material config
+│   │   │       └── crypto-config-*.yaml   # Crypto material configs
 │   │   └── scripts/
 │   │       ├── network.sh                 # Network lifecycle
-│   │       └── deploy-chaincode.sh        # Chaincode deployment
+│   │       └── deploy-ccaas.sh            # CCAAS chaincode deployment
 │   └── chaincode/
-│       └── routing/
+│       └── routing/                       # Go chaincode
 │           ├── go.mod
 │           ├── main.go
 │           ├── contracts/
 │           │   ├── vehicle.go             # Vehicle registration
 │           │   └── segment.go             # Segment reservation
-│           └── models/
-│               └── models.go              # Data structures
+│           ├── models/
+│           │   └── models.go              # Data structures
+│           └── Dockerfile                 # Chaincode image
 ├── data/
 │   └── maps/
 │       └── grid-5x5.json                  # Synthetic map data
-├── Makefile
-└── README.md
+├── start.sh                               # Automated startup script
+├── Makefile                               # Convenience commands
+├── README.md
+└── STARTUP_GUIDE.md                       # Detailed startup guide
 ```
 
 ## Chaincode Functions
@@ -244,34 +317,80 @@ emergency-routing/
 | `ResolveConflict(conflictId, resolution)` | Resolve a conflict |
 | `GetPendingConflicts()` | List pending conflicts |
 
+## Path Calculation & Routing
+
+### A* Algorithm
+
+The system uses the **A* pathfinding algorithm** with a heuristic-based approach:
+
+- **Heuristic Function**: Haversine distance (straight-line distance) between nodes using lat/lon coordinates
+- **Priority-Based Edge Weights**: Path costs are dynamically adjusted based on:
+  - **Free segments**: Base weight (normal travel time)
+  - **Reserved segments (higher priority)**: Small penalty (2x) - can preempt
+  - **Reserved segments (same priority)**: Very high penalty (2000x) - forces detour
+  - **Reserved segments (lower priority)**: Extremely high penalty (10000x) - effectively blocked
+  - **Occupied segments**: High penalty (100x) - nearly blocked
+- **Dynamic Recalculation**: Weights update based on real-time blockchain state
+
+### Route Calculation Modes
+
+1. **Node-Based Routing** (Primary):
+   - Uses Manhattan map nodes and segments
+   - A* algorithm finds optimal path considering current reservations
+   - Returns segment path and node path
+   - Integrates with blockchain segment status
+
+2. **Coordinate-Based Routing** (OSRM Integration):
+   - Uses real-world coordinates (lat/lon)
+   - Optional integration with OSRM for accurate route geometry
+   - Returns detailed route geometry for map visualization
+   - Falls back to node-based routing if OSRM unavailable
+
+### Alternative Routes
+
+The system can calculate alternative routes by:
+- Excluding segments from the primary path
+- Finding multiple path options
+- Selecting best alternative based on current traffic/reservations
+
 ## Priority Rules
 
 1. **Priority 1** (Highest): Medical emergencies
-2. **Priority 2**: Fire & Rescue
+2. **Priority 2**: Fire & Rescue  
 3. **Priority 3**: Police
 4. **Priority 4-5**: Infrastructure, other
 
 ### Conflict Resolution
 
 - **Higher priority wins**: A priority 1 vehicle can preempt a priority 3 reservation
-- **Same priority**: Creates a conflict that must be negotiated/resolved
-- **Lower priority denied**: Cannot take segment from higher priority
+- **Automatic Rerouting**: Lower-priority missions are automatically rerouted to alternative paths when preempted
+- **Same priority**: Very high penalty forces detour (FCFS rule applies)
+- **Lower priority denied**: Cannot take segment from higher priority (effectively infinite penalty)
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **"Error: chaincode not found"**
-   - Ensure chaincode is deployed: `make deploy-chaincode`
+1. **"cryptogen: command not found" or "configtxgen: command not found"**
+   - Ensure Fabric binaries are in `blockchain/network/bin/`
+   - See Prerequisites section for installation instructions
 
-2. **"Error: peer not joined to channel"**
+2. **"Error: chaincode not found"**
+   - Ensure chaincode is deployed: `./blockchain/network/scripts/deploy-ccaas.sh`
+   - Verify chaincode container is running: `docker ps | grep routing-chaincode`
+
+3. **"Error: peer not joined to channel"**
    - Run: `make network-up` (includes channel join)
 
-3. **"MVCC conflict"**
+4. **"EACCES: permission denied" when starting backend**
+   - Fix file permissions: `sudo chown -R $USER:$USER blockchain/network/organizations/`
+   - Or run `./start.sh` which handles permissions automatically
+
+5. **"MVCC conflict"**
    - Two transactions tried to modify the same key
    - Retry the transaction
 
-4. **Docker errors**
+6. **Docker errors**
    - Clean up: `make network-clean`
    - Start fresh: `make network-up`
 
@@ -288,13 +407,30 @@ docker logs -f peer0.medical.emergency.net
 docker logs -f $(docker ps -q --filter "name=routing")
 ```
 
-## Next Steps (Phase 2+)
+## Components
 
-- [ ] Backend API (Node.js + Express)
-- [ ] Frontend Map Visualization (React)
-- [ ] Vehicle Simulation
-- [ ] Mission Management
-- [ ] Real-time WebSocket updates
+The system consists of:
+
+- **Blockchain Network**: Hyperledger Fabric network with 2 organizations (Medical, Police)
+- **Chaincode**: Go-based smart contracts for vehicle and segment management (CCAAS deployment)
+- **Backend API**: Node.js/TypeScript REST API with WebSocket support for real-time updates
+- **Frontend**: React + TypeScript web application for visualization and control
+
+## Makefile Commands
+
+```bash
+make help              # Show all available commands
+make network-up        # Start the Fabric network
+make network-down      # Stop the network
+make network-clean     # Clean all data and containers
+make network-restart   # Restart the network
+make status            # Check network status
+make logs              # View container logs
+make deploy-chaincode  # Deploy chaincode (legacy command)
+make init-chaincode    # Initialize segments (done automatically by deploy-ccaas.sh)
+make test-chaincode    # Test chaincode functions
+make shell             # Open CLI container shell
+```
 
 ## License
 
