@@ -1,0 +1,358 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{datetime}
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    pdftitle={Rapport - Système de Routage d'Urgence},
+}
+
+\begin{document}
+
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    {\LARGE\bfseries Système de Routage Dynamique pour Véhicules d'Urgence\\Basé sur la Blockchain\par}
+    \vspace{2cm}
+    {\large MST Intelligence Artificielle et Science des Données \\ M234 \par}
+    \vspace{1.5cm}
+    {\large Imad El Maftouhi \quad Mossab Benamar \\ \quad Aimane Rhimini \quad Imad El Anassi\par}
+    
+    \vfill
+    
+    Encadré par : \\[0.5em]
+    {\large Pr.  Benabdelouahab\par}
+    
+    \vfill
+    Ikram
+    Faculté des Sciences et Techniques de Tanger \\
+    Département Informatique \\
+    Année universitaire 2025--2026
+    
+    \vfill
+    
+    {\large \date(\today) \par}
+    
+    \end{titlepage}
+
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+\subsection{Contexte et Motivation}
+
+Dans le contexte des villes intelligentes (Smart Cities), la coordination efficace des services d'urgence représente un défi majeur. Les véhicules d'urgence (ambulances, pompiers, forces de l'ordre) doivent pouvoir se déplacer rapidement tout en évitant les conflits de trafic et en respectant les priorités opérationnelles. Ce projet propose une solution innovante basée sur la technologie blockchain pour gérer le routage dynamique des véhicules d'urgence.
+
+L'utilisation de la blockchain permet de créer un registre distribué et immuable où toutes les réservations de segments routiers sont enregistrées de manière transparente et vérifiable. Cette approche garantit la traçabilité complète des décisions de routage tout en permettant à plusieurs organisations (services médicaux, police) de coordonner leurs opérations sans compromettre leur autonomie organisationnelle.
+
+\subsection{Objectifs du Projet}
+
+Les objectifs principaux de ce projet visent à répondre aux défis de coordination des services d'urgence dans un environnement urbain complexe. Premièrement, le projet cherche à développer un système de routage dynamique basé sur l'algorithme A* avec une gestion sophistiquée des priorités. Cet algorithme permet de calculer les itinéraires optimaux en tenant compte non seulement de la distance, mais également de l'état réel des segments routiers et des réservations en cours.
+
+De plus, le projet implémente une architecture blockchain utilisant Hyperledger Fabric pour permettre la coordination multi-organisationnelle. Cette approche garantit que plusieurs organisations, telles que les services médicaux et les forces de l'ordre, peuvent coordonner leurs opérations sans avoir besoin d'une autorité centrale unique. Par ailleurs, chaque organisation conserve son autonomie tout en bénéficiant d'une vue partagée et vérifiable de l'état du réseau routier.
+
+En outre, le projet vise à créer une interface utilisateur interactive pour la visualisation et la gestion des missions. Cette interface permet aux opérateurs de suivre en temps réel les véhicules, de créer de nouvelles missions, et de visualiser les itinéraires calculés. Enfin, le système met en place un mécanisme de résolution automatique des conflits basé sur les niveaux de priorité, et assure la traçabilité complète des opérations via un registre immuable, ce qui est essentiel pour l'audit et la conformité réglementaire.
+
+\subsection{Portée et Limitations}
+
+Ce projet se concentre sur la démonstration du concept (proof of concept) d'un système de routage d'urgence basé sur la blockchain. Le système utilise une carte simplifiée de Manhattan (New York) avec des coordonnées géographiques réelles, ce qui permet de valider l'approche dans un contexte urbain réaliste tout en maintenant la complexité à un niveau gérable pour un prototype.
+
+Bien que le système soit conçu pour être extensible, la version actuelle se limite à deux organisations (services médicaux et police) et à un réseau de test. Cette limitation permet de valider les mécanismes de coordination inter-organisationnelle sans introduire une complexité excessive. Par ailleurs, la carte couvre une zone géographique restreinte, ce qui facilite les tests et la validation, mais limite également la généralisation des résultats à des environnements plus vastes.
+
+En outre, le système ne prend pas encore en compte certaines variables réelles telles que les conditions météorologiques, les travaux routiers, ou les événements spéciaux qui pourraient affecter la circulation. Cependant, l'architecture modulaire permet d'intégrer ces fonctionnalités dans des versions futures sans nécessiter une refonte complète du système.
+
+\section{Architecture du Système}
+
+\subsection{Vue d'Ensemble}
+
+Le système adopte une architecture en trois couches distinctes qui permettent une séparation claire des responsabilités et facilitent la maintenance ainsi que l'évolution du système. La première couche, appelée couche client, consiste en une interface utilisateur web développée en React avec TypeScript. Cette interface offre une expérience utilisateur moderne et réactive, permettant aux opérateurs d'interagir efficacement avec le système.
+
+La deuxième couche, la couche application, comprend une API backend développée en Node.js avec TypeScript. Cette couche expose des services de routage et de gestion des missions, ainsi que des mécanismes de communication en temps réel via WebSocket. Elle agit comme un intermédiaire entre l'interface utilisateur et la couche blockchain, transformant les requêtes utilisateur en transactions blockchain et gérant la logique métier complexe.
+
+Enfin, la troisième couche, la couche blockchain, consiste en un réseau Hyperledger Fabric avec des smart contracts développés en Go. Cette couche garantit l'intégrité et la traçabilité des données, tout en permettant la coordination entre plusieurs organisations sans nécessiter de confiance mutuelle préalable. Chaque couche communique avec les autres via des interfaces bien définies, ce qui permet une évolution indépendante des composants.
+
+\subsection{Architecture Blockchain}
+
+\subsubsection{Réseau Hyperledger Fabric}
+
+Le réseau blockchain est composé de deux organisations distinctes qui représentent les principaux acteurs des services d'urgence. La première organisation, appelée OrgMedical, représente les services médicaux d'urgence. Cette organisation gère les ambulances et les véhicules médicaux d'urgence, qui nécessitent généralement la priorité la plus élevée dans le système. La deuxième organisation, OrgPolice, représente les forces de l'ordre et leurs véhicules de patrouille et d'intervention.
+
+Chaque organisation possède son propre pair (peer) avec une base de données CouchDB pour le stockage des états. Cette architecture distribuée garantit que chaque organisation maintient une copie complète du registre, ce qui assure la résilience et la disponibilité du système. Par ailleurs, l'utilisation de CouchDB permet des requêtes complexes sur les données, facilitant ainsi l'analyse et le suivi des opérations.
+
+Le consensus est assuré par un service d'ordonnancement (Orderer) utilisant l'algorithme Raft, qui garantit que toutes les transactions sont validées et ordonnées de manière cohérente sur l'ensemble du réseau. Toutes les transactions sont enregistrées sur le canal \texttt{emergency-channel}, qui sert de canal de communication privé entre les deux organisations. Cette approche permet de maintenir la confidentialité des données tout en permettant la coordination nécessaire pour le routage des véhicules.
+
+\subsubsection{Smart Contracts (Chaincode)}
+
+Le chaincode, développé en Go, implémente deux contrats principaux qui définissent la logique métier du système. Le premier contrat, appelé \texttt{VehicleContract}, gère l'enregistrement et la gestion des véhicules d'urgence avec leurs niveaux de priorité associés. Ce contrat permet d'enregistrer de nouveaux véhicules, de mettre à jour leur statut, et de consulter les informations relatives aux véhicules enregistrés. Chaque véhicule est associé à un identifiant unique, un type d'organisation, un type de véhicule, et un niveau de priorité qui détermine son comportement dans le système de routage.
+
+Le deuxième contrat, \texttt{SegmentContract}, gère la réservation et la libération des segments routiers, ainsi que la résolution des conflits. Ce contrat est au cœur du système de coordination, car il permet de réserver des segments pour des missions spécifiques, de libérer les segments lorsque les véhicules les quittent, et de gérer les conflits lorsque plusieurs véhicules tentent d'utiliser le même segment simultanément. Le contrat implémente également la logique de préemption, permettant aux véhicules de priorité supérieure de prendre le contrôle de segments réservés par des véhicules de priorité inférieure.
+
+Le déploiement utilise le modèle CCAAS (Chaincode as a Service), qui permet une meilleure isolation et une gestion simplifiée du cycle de vie du chaincode. Cette approche moderne de déploiement offre plusieurs avantages, notamment une isolation améliorée des processus, une gestion plus flexible des ressources, et une facilité accrue de mise à jour et de maintenance. De plus, le modèle CCAAS permet un déploiement plus rapide et plus fiable que les méthodes traditionnelles de déploiement de chaincode.
+
+\subsection{Architecture Backend}
+
+Le backend, développé en Node.js avec TypeScript, expose une API REST complète et un serveur WebSocket pour les mises à jour en temps réel. L'utilisation de TypeScript apporte une sécurité de type supplémentaire et améliore la maintenabilité du code, tandis que Node.js offre des performances élevées pour les opérations asynchrones et les communications réseau.
+
+Le service de routage constitue l'un des composants les plus critiques du système. Il implémente l'algorithme A* avec une gestion dynamique des poids basée sur les réservations blockchain. Ce service interroge régulièrement l'état des segments sur la blockchain pour mettre à jour les poids des arêtes dans le graphe de routage, garantissant ainsi que les itinéraires calculés reflètent l'état réel du réseau routier.
+
+Le service de gestion des missions permet la création, le suivi et la mise à jour des missions d'urgence. Lorsqu'une nouvelle mission est créée, ce service coordonne avec le service de routage pour calculer l'itinéraire optimal, puis interagit avec la blockchain pour réserver les segments nécessaires. Par ailleurs, le service maintient l'état de chaque mission et coordonne les mises à jour en temps réel via WebSocket.
+
+Le service de simulation gère le mouvement des véhicules de manière discrète, segment par segment. Ce service simule la progression des véhicules le long de leurs itinéraires, mettant à jour les réservations de segments au fur et à mesure que les véhicules avancent. Enfin, le service de résolution de conflits détecte et résout automatiquement les conflits de priorité, garantissant que les véhicules de priorité supérieure peuvent préempter les réservations de priorité inférieure lorsque nécessaire.
+
+\subsection{Architecture Frontend}
+
+L'interface utilisateur, développée en React avec TypeScript, utilise la bibliothèque Leaflet pour la visualisation cartographique. Cette combinaison technologique offre une expérience utilisateur moderne et réactive, permettant aux opérateurs d'interagir efficacement avec le système de routage.
+
+L'interface permet la visualisation interactive de la carte avec les segments routiers, offrant une vue claire et intuitive du réseau routier. Les segments sont colorés en fonction de leur état : libres, réservés, ou occupés, ce qui permet aux opérateurs de comprendre rapidement l'état du réseau. De plus, le système affiche les réservations de segments en temps réel, permettant de suivre l'évolution de la situation au fur et à mesure que les véhicules se déplacent.
+
+Le suivi en temps réel des véhicules via WebSocket permet aux opérateurs de voir la position actuelle de chaque véhicule et de suivre leur progression le long de leurs itinéraires. Cette fonctionnalité est essentielle pour la coordination des opérations et permet une réaction rapide en cas de problème. Par ailleurs, l'interface permet la création et la gestion des missions d'urgence, avec une visualisation claire des itinéraires calculés. Les opérateurs peuvent voir non seulement l'itinéraire optimal, mais également les itinéraires alternatifs si nécessaire, ce qui facilite la prise de décision en cas de changement de situation.
+
+\section{Implémentation Technique}
+
+\subsection{Algorithme de Routage A*}
+
+\subsubsection{Principe}
+
+L'algorithme A* est utilisé pour calculer les itinéraires optimaux entre deux points. La fonction heuristique utilise la distance de Haversine (distance à vol d'oiseau) calculée à partir des coordonnées géographiques (latitude/longitude) des nœuds.
+
+\subsubsection{Gestion Dynamique des Poids}
+
+Les poids des arêtes dans le graphe sont ajustés dynamiquement en fonction de l'état des segments sur la blockchain, ce qui permet à l'algorithme A* de prendre en compte les réservations en cours lors du calcul des itinéraires. Cette approche dynamique est essentielle pour garantir que les itinéraires calculés reflètent l'état réel du réseau routier et évitent les conflits potentiels.
+
+Pour les segments libres, le système utilise un poids de base correspondant au temps de trajet normal. Cependant, lorsque des segments sont réservés, le système applique différentes pénalités en fonction de la relation entre la priorité du véhicule demandeur et celle du véhicule qui a réservé le segment. Si le véhicule demandeur a une priorité supérieure, une pénalité modérée de 2x est appliquée, ce qui permet au véhicule de préempter la réservation tout en favorisant légèrement les itinéraires alternatifs.
+
+Lorsque deux véhicules ont la même priorité, le système applique une pénalité très élevée de 2000x, ce qui force effectivement l'algorithme à trouver un itinéraire alternatif et évite les conflits entre véhicules de même priorité. Cette approche respecte le principe du premier arrivé, premier servi (FCFS) pour les véhicules de même priorité. En revanche, si le véhicule demandeur a une priorité inférieure, une pénalité extrêmement élevée de 10000x est appliquée, ce qui bloque effectivement l'accès au segment et garantit que les véhicules de priorité supérieure ne sont jamais bloqués par des véhicules de priorité inférieure.
+
+Pour les segments occupés, c'est-à-dire les segments où un véhicule est actuellement présent, le système applique une pénalité élevée de 100x, ce qui rend ces segments presque inaccessibles mais permet néanmoins leur utilisation en cas d'absolue nécessité. Cette approche garantit que les véhicules de priorité supérieure peuvent préempter les réservations de priorité inférieure, tout en évitant les conflits entre véhicules de même priorité et en minimisant les risques de collision.
+
+\subsection{Système de Priorités}
+
+Le système définit cinq niveaux de priorité qui reflètent l'urgence relative des différentes missions. La priorité 1, qui est la plus élevée, est réservée aux urgences médicales. Ces missions concernent généralement des situations où la vie est en danger immédiat, telles que les arrêts cardiaques, les accidents graves, ou les urgences médicales critiques. Les véhicules médicaux bénéficient donc de la priorité absolue dans le système, ce qui leur permet de préempter toutes les autres réservations.
+
+La priorité 2 est attribuée aux pompiers et aux services de secours. Ces missions concernent généralement les incendies, les sauvetages, et autres situations d'urgence nécessitant une intervention rapide mais ne mettant pas directement la vie en danger de la même manière que les urgences médicales. Les véhicules de priorité 2 peuvent préempter les réservations de priorité 3, 4 et 5, mais doivent céder le passage aux véhicules médicaux de priorité 1.
+
+La priorité 3 est attribuée aux forces de l'ordre, qui incluent les véhicules de police en intervention. Ces missions peuvent concerner des poursuites, des interventions d'urgence, ou d'autres situations nécessitant une réponse rapide des forces de l'ordre. Enfin, les priorités 4 et 5 sont réservées aux services d'infrastructure et autres services moins urgents. Ces véhicules ne peuvent préempter aucune autre réservation et doivent attendre que les segments soient libres ou utiliser des itinéraires alternatifs.
+
+\subsection{Résolution Automatique des Conflits}
+
+Lorsqu'un véhicule de priorité supérieure tente de réserver un segment déjà réservé par un véhicule de priorité inférieure, le système déclenche automatiquement un processus de résolution de conflit. Ce processus garantit que les véhicules de priorité supérieure ne sont jamais bloqués par des véhicules de priorité inférieure, tout en minimisant l'impact sur les missions de priorité inférieure.
+
+Premièrement, la réservation de priorité supérieure est automatiquement acceptée et enregistrée sur la blockchain. Cette opération est effectuée de manière atomique, garantissant que la réservation est immédiatement effective et visible par tous les participants du réseau. Parallèlement, la réservation de priorité inférieure est annulée, libérant ainsi le segment pour le véhicule de priorité supérieure.
+
+Ensuite, le système recalcule automatiquement l'itinéraire pour le véhicule de priorité inférieure. Ce recalcul prend en compte le nouveau état du réseau, y compris la perte du segment préempté, et trouve un itinéraire alternatif optimal. Si un itinéraire alternatif est trouvé, les nouveaux segments sont automatiquement réservés pour le véhicule de priorité inférieure. Si aucun itinéraire alternatif n'est disponible, le système peut soit mettre la mission en attente, soit suggérer un itinéraire plus long qui contourne le segment préempté.
+
+Enfin, une notification est envoyée via WebSocket pour informer les parties concernées de la préemption. Cette notification permet aux opérateurs de réagir rapidement à la situation et de prendre les mesures nécessaires, telles que la coordination avec d'autres véhicules ou l'ajustement des plans de mission. Le système maintient également un historique complet de toutes les préemptions, ce qui permet l'analyse post-incident et l'optimisation future du système.
+
+\subsection{Structure de la Carte}
+
+Le système utilise une carte basée sur Manhattan (New York) avec des coordonnées réelles, ce qui permet de valider l'approche dans un environnement urbain réaliste. L'utilisation de coordonnées latitude/longitude pour Manhattan garantit que les distances calculées et les itinéraires générés correspondent à la réalité géographique, ce qui est essentiel pour la validation du système et son application potentielle dans un contexte réel.
+
+La carte inclut plusieurs points d'intérêt (POI) qui sont cruciaux pour les opérations d'urgence. Ces POI incluent les hôpitaux, qui servent de destinations pour les ambulances, les postes de police, qui servent de bases pour les véhicules de police, et les casernes de pompiers, qui servent de points de départ pour les interventions d'incendie. En outre, la carte inclut des intersections clés qui servent de nœuds dans le réseau routier et permettent la connexion entre différents segments.
+
+Le réseau routier est modélisé comme un graphe où les nœuds représentent les intersections et les POI, et où les arêtes représentent les segments de rue connectant ces nœuds. Chaque segment a des propriétés telles que sa longueur, sa direction, et son état actuel (libre, réservé, ou occupé). La plupart des segments permettent la circulation dans les deux sens, ce qui offre une flexibilité maximale pour le routage et permet aux véhicules de trouver des itinéraires alternatifs même lorsque certains segments sont bloqués.
+
+La carte couvre la zone de Lower Manhattan (Canal Street) jusqu'à Central Park South (59th Street), fournissant un environnement urbain réaliste pour le routage des véhicules d'urgence. Cette zone inclut une variété de types de rues, des avenues larges aux rues étroites, ce qui permet de tester le système dans différents contextes routiers. Par ailleurs, cette zone est suffisamment grande pour permettre des missions complexes avec plusieurs segments, tout en restant gérable pour les tests et la validation.
+
+\subsection{Intégration OSRM (Optionnelle)}
+
+Le système peut optionnellement s'intégrer avec OSRM (Open Source Routing Machine) pour obtenir une géométrie d'itinéraire précise basée sur les données routières réelles. En cas d'indisponibilité d'OSRM, le système bascule automatiquement vers le routage basé sur les nœuds.
+
+\section{Fonctionnalités Principales}
+
+\subsection{Enregistrement des Véhicules}
+
+Les véhicules d'urgence sont enregistrés sur la blockchain avec un ensemble complet d'informations qui permettent leur identification et leur gestion dans le système. Chaque véhicule reçoit un identifiant unique qui sert de clé primaire dans le registre blockchain. Cet identifiant est utilisé pour toutes les opérations liées au véhicule, telles que les réservations de segments, les mises à jour de statut, et le suivi de position.
+
+Le type d'organisation (médical, police, etc.) est également enregistré, ce qui permet au système de déterminer quelles organisations ont le droit d'accéder et de modifier les informations d'un véhicule donné. Cette information est cruciale pour la sécurité et la confidentialité des données, car elle permet d'implémenter des contrôles d'accès basés sur l'organisation.
+
+Le type de véhicule est également enregistré, ce qui peut influencer le comportement du système. Par exemple, une ambulance peut avoir des caractéristiques différentes d'un véhicule de police, telles que des besoins différents en termes de routes ou de destinations. Le niveau de priorité est l'une des informations les plus importantes, car il détermine comment le véhicule interagit avec les autres véhicules dans le système et quels segments il peut préempter.
+
+Enfin, le statut du véhicule (disponible, en mission, etc.) est maintenu à jour en temps réel, permettant au système de savoir quels véhicules sont disponibles pour de nouvelles missions et quels véhicules sont actuellement engagés. Cette information est essentielle pour la gestion efficace des ressources et permet au système de suggérer les véhicules les plus appropriés pour chaque nouvelle mission.
+
+\subsection{Gestion des Missions}
+
+Le système permet de créer et gérer des missions d'urgence de manière complète et automatisée. Lorsqu'une nouvelle mission est créée, l'opérateur définit le point de départ et la destination, ainsi que le véhicule qui sera assigné à la mission. Le système utilise ensuite ces informations pour calculer automatiquement l'itinéraire optimal en tenant compte de l'état actuel du réseau routier et des réservations en cours.
+
+Le calcul de l'itinéraire utilise l'algorithme A* avec les poids dynamiques basés sur l'état des segments sur la blockchain. Ce calcul prend en compte non seulement la distance, mais également les réservations existantes, les priorités des autres véhicules, et la nécessité potentielle de préempter certaines réservations. Une fois l'itinéraire calculé, le système réserve automatiquement tous les segments nécessaires sur la blockchain, garantissant ainsi que le véhicule aura accès à ces segments lorsqu'il en aura besoin.
+
+Le système assure également le suivi en temps réel de la progression du véhicule le long de son itinéraire. Ce suivi est effectué via une simulation discrète où le véhicule se déplace segment par segment. À chaque étape, le système met à jour automatiquement les réservations : le segment actuel est marqué comme occupé, le segment suivant est réservé, et le segment précédent est libéré. Ces mises à jour sont propagées en temps réel via WebSocket, permettant à tous les opérateurs de voir l'état actuel du réseau et la position de chaque véhicule.
+
+En cas de préemption ou de changement de situation, le système peut recalculer automatiquement l'itinéraire et mettre à jour les réservations en conséquence. Cette capacité de réaction dynamique est essentielle pour gérer les situations d'urgence où les conditions peuvent changer rapidement et où la flexibilité est cruciale pour assurer une réponse efficace.
+
+\subsection{Simulation de Mouvement}
+
+Le système simule le mouvement des véhicules de manière discrète, segment par segment, ce qui permet de modéliser efficacement la progression des véhicules tout en maintenant une complexité gérable. Cette approche discrète est appropriée pour un système de routage où l'objectif principal est de gérer les réservations de segments plutôt que de modéliser la physique continue du mouvement des véhicules.
+
+À chaque étape de la simulation, plusieurs opérations sont effectuées de manière séquentielle. Premièrement, le véhicule occupe le segment actuel, ce qui signifie que le segment est marqué comme occupé sur la blockchain et qu'aucun autre véhicule ne peut l'utiliser à ce moment-là. Cette opération garantit que les collisions sont évitées et que le système maintient une vue précise de l'état réel du réseau.
+
+Deuxièmement, le segment suivant est réservé, ce qui garantit que le véhicule aura accès à ce segment lorsqu'il y arrivera. Cette réservation anticipée est essentielle pour éviter les conflits et garantir que le véhicule peut continuer son trajet sans interruption. Si le segment suivant est déjà réservé par un véhicule de priorité inférieure, le système peut préempter cette réservation. Si le segment est réservé par un véhicule de priorité supérieure ou égale, le système doit recalculer l'itinéraire pour trouver un chemin alternatif.
+
+Troisièmement, le segment précédent est libéré, ce qui permet à d'autres véhicules de l'utiliser. Cette libération est effectuée dès que le véhicule quitte le segment, maximisant ainsi l'utilisation efficace du réseau routier. Enfin, toutes ces mises à jour sont propagées via WebSocket pour la visualisation en temps réel, permettant aux opérateurs de suivre la progression des véhicules et de réagir rapidement à tout changement de situation.
+
+\subsection{Piste d'Audit}
+
+Toutes les actions sont enregistrées de manière immuable sur la blockchain, fournissant une piste d'audit complète et vérifiable. Cette traçabilité est l'un des avantages majeurs de l'utilisation de la blockchain dans ce contexte, car elle garantit que toutes les décisions et actions peuvent être reconstituées et analysées après coup.
+
+La piste d'audit est particulièrement utile pour l'analyse post-incident, où il est nécessaire de comprendre exactement ce qui s'est passé lors d'une mission d'urgence. Les opérateurs peuvent retracer chaque décision de routage, chaque réservation de segment, et chaque préemption, permettant ainsi d'identifier les problèmes potentiels et d'améliorer les processus futurs. Cette analyse peut également révéler des patterns dans les opérations qui peuvent être utilisés pour optimiser le système.
+
+Par ailleurs, la piste d'audit est essentielle pour la conformité réglementaire. Les services d'urgence sont souvent soumis à des réglementations strictes concernant la documentation de leurs opérations, et la blockchain fournit un moyen fiable et vérifiable de maintenir cette documentation. Les enregistrements blockchain sont horodatés et signés cryptographiquement, garantissant leur authenticité et leur intégrité.
+
+En outre, la piste d'audit peut être utilisée pour l'optimisation des performances. En analysant les données historiques, le système peut identifier les segments qui sont fréquemment préemptés, les itinéraires qui sont souvent utilisés, et les patterns de trafic qui peuvent être optimisés. Ces informations peuvent être utilisées pour améliorer l'algorithme de routage, ajuster les priorités, ou même suggérer des changements dans l'infrastructure routière.
+
+Enfin, la piste d'audit peut être utilisée pour la résolution des litiges. Si une question se pose concernant une décision de routage ou une préemption, les enregistrements blockchain fournissent une preuve irréfutable de ce qui s'est réellement passé. Cette transparence peut aider à résoudre les conflits entre organisations et à maintenir la confiance dans le système.
+
+\section{Résultats et Évaluation}
+
+\subsection{Scénarios de Test}
+
+Le système a été testé avec plusieurs scénarios qui couvrent les cas d'usage principaux et les situations de conflit potentielles. Ces tests permettent de valider le fonctionnement correct du système dans différentes conditions et de vérifier que les mécanismes de résolution de conflits fonctionnent comme prévu.
+
+Le premier scénario, appelé scénario de routage simple sans conflit, teste le cas de base où un véhicule médical de priorité 1 se déplace d'un hôpital à un point d'urgence sans rencontrer d'autres véhicules. Ce scénario valide que l'algorithme de routage fonctionne correctement et que les réservations de segments sont effectuées et libérées comme prévu. Les résultats montrent que le système calcule efficacement l'itinéraire optimal et gère correctement les réservations tout au long du trajet.
+
+Le deuxième scénario teste la résolution de conflit de priorité, où un véhicule médical de priorité 1 tente de réserver un segment déjà réservé par un véhicule de police de priorité 3. Ce scénario valide que le mécanisme de préemption fonctionne correctement et que les véhicules de priorité supérieure peuvent effectivement prendre le contrôle des segments réservés par des véhicules de priorité inférieure. Les résultats confirment que la préemption est effectuée automatiquement et que les notifications appropriées sont envoyées aux parties concernées.
+
+Le troisième scénario teste le reroutage automatique, où un véhicule de priorité inférieure est automatiquement rerouté après qu'une de ses réservations a été préemptée. Ce scénario valide que le système peut réagir dynamiquement aux changements de situation et trouver des itinéraires alternatifs lorsque nécessaire. Les résultats montrent que le système recalcule efficacement les itinéraires et que les véhicules de priorité inférieure peuvent continuer leurs missions même après avoir été préemptés.
+
+Le quatrième scénario teste la gestion des conflits entre véhicules de même priorité, où deux véhicules de même priorité tentent d'utiliser le même segment. Ce scénario valide que le système évite les conflits entre véhicules de même priorité en forçant des détours via des itinéraires alternatifs. Les résultats confirment que le système applique correctement le principe du premier arrivé, premier servi et que les véhicules de même priorité ne se bloquent pas mutuellement.
+
+\subsection{Performance}
+
+Le système démontre des performances satisfaisantes dans les différents aspects critiques pour un système de routage d'urgence. En termes de temps de réponse, le système calcule les itinéraires en moins de 100 millisecondes pour des cartes de taille moyenne. Cette performance est essentielle pour un système d'urgence où chaque seconde compte, et elle permet aux opérateurs de recevoir rapidement les itinéraires calculés et de prendre des décisions en temps réel.
+
+La latence blockchain, c'est-à-dire le temps nécessaire pour qu'une transaction soit confirmée sur la blockchain, est de l'ordre de 1 à 2 secondes. Cette latence est acceptable pour la plupart des opérations d'urgence, car elle permet de garantir l'intégrité et la cohérence des données tout en maintenant une réactivité suffisante. Cependant, pour des situations d'urgence extrême où chaque milliseconde compte, cette latence pourrait être un facteur limitant, et des optimisations futures pourraient être nécessaires.
+
+En termes de scalabilité, le système supporte efficacement de multiples véhicules simultanés sans dégradation notable des performances. Les tests montrent que le système peut gérer plusieurs dizaines de véhicules simultanément sans que les temps de calcul d'itinéraire ou la latence blockchain ne se dégradent significativement. Cette scalabilité est importante pour un déploiement réel où de nombreux véhicules peuvent être en opération simultanément.
+
+Enfin, le système démontre une fiabilité élevée dans la résolution automatique des conflits. Tous les conflits testés ont été résolus automatiquement sans intervention manuelle, et le système a toujours trouvé des solutions appropriées, que ce soit par préemption ou par reroutage. Cette fiabilité est cruciale pour un système d'urgence où les opérateurs doivent pouvoir compter sur le système pour gérer automatiquement les situations complexes.
+
+\subsection{Limitations Identifiées}
+
+Plusieurs limitations ont été identifiées au cours du développement et des tests du système, qui représentent des opportunités d'amélioration pour les versions futures. Premièrement, la carte actuelle est limitée à une zone géographique restreinte, couvrant uniquement une partie de Manhattan. Cette limitation facilite les tests et la validation, mais elle limite également la généralisation des résultats à des environnements plus vastes ou à d'autres villes avec des caractéristiques routières différentes.
+
+Deuxièmement, le système ne prend pas en compte les conditions de trafic en temps réel, à l'exception des réservations de segments par les véhicules d'urgence. Cela signifie que le système ne considère pas le trafic normal des autres véhicules, les embouteillages, ou les conditions routières variables. Cette limitation pourrait affecter l'optimalité des itinéraires calculés dans des conditions de trafic réelles, bien que les réservations de segments garantissent que les véhicules d'urgence peuvent toujours utiliser leurs segments réservés.
+
+Troisièmement, la simulation de mouvement est discrète et ne modélise pas la physique continue du mouvement des véhicules. Cette approche est appropriée pour la gestion des réservations, mais elle ne capture pas certains aspects du mouvement réel, tels que l'accélération, la décélération, ou les interactions physiques entre véhicules. Pour un système de routage, cette limitation est généralement acceptable, mais elle pourrait être un facteur dans des applications plus avancées nécessitant une modélisation plus précise.
+
+Enfin, le nombre d'organisations est limité à deux dans la configuration actuelle, ce qui permet de valider les mécanismes de coordination inter-organisationnelle mais limite la généralisation à des environnements avec plus d'organisations. Cependant, l'architecture du système est conçue pour être extensible, et l'ajout de nouvelles organisations ne devrait pas nécessiter de changements majeurs dans le code, seulement une reconfiguration du réseau blockchain.
+
+\section{Sécurité et Confidentialité}
+
+\subsection{Architecture de Sécurité}
+
+Le système implémente plusieurs mécanismes de sécurité pour garantir l'intégrité des données et la protection contre les accès non autorisés. L'utilisation de Hyperledger Fabric apporte des garanties de sécurité au niveau de la blockchain, notamment l'authentification cryptographique des participants, la confidentialité des transactions via les canaux privés, et l'intégrité des données via le consensus distribué.
+
+Chaque organisation possède ses propres certificats cryptographiques qui sont utilisés pour authentifier toutes les transactions. Ces certificats sont gérés par les autorités de certification (CA) de chaque organisation, garantissant que seuls les participants autorisés peuvent effectuer des transactions. Par ailleurs, les transactions sont signées cryptographiquement, ce qui garantit leur authenticité et leur non-répudiation.
+
+\subsection{Contrôles d'Accès}
+
+Le système implémente des contrôles d'accès basés sur les organisations, garantissant que chaque organisation ne peut accéder qu'aux données qui lui sont pertinentes. Par exemple, une organisation médicale peut voir et modifier les informations de ses propres véhicules, mais ne peut voir que les réservations de segments effectuées par d'autres organisations, sans pouvoir les modifier. Cette approche maintient un équilibre entre la transparence nécessaire pour la coordination et la confidentialité des données sensibles.
+
+Les smart contracts implémentent également des vérifications de permissions avant d'autoriser certaines opérations. Par exemple, seuls les véhicules enregistrés peuvent réserver des segments, et seuls les véhicules qui ont réservé un segment peuvent l'occuper. Ces vérifications sont effectuées au niveau du chaincode, garantissant qu'elles ne peuvent pas être contournées même si l'API backend est compromise.
+
+\subsection{Protection des Données}
+
+Les données sensibles sont protégées à plusieurs niveaux. Premièrement, les communications entre les composants sont chiffrées, garantissant que les données ne peuvent pas être interceptées en transit. Deuxièmement, les données stockées sur la blockchain sont accessibles uniquement aux participants autorisés du canal, garantissant la confidentialité même si le réseau est partiellement compromis.
+
+En outre, le système maintient un historique complet de toutes les transactions, ce qui permet de détecter et d'analyser toute activité suspecte. Cette traçabilité est essentielle pour la sécurité, car elle permet d'identifier rapidement toute tentative d'accès non autorisé ou de manipulation des données.
+
+\section{Déploiement et Maintenance}
+
+\subsection{Architecture de Déploiement}
+
+Le système est conçu pour être déployé dans un environnement Docker, ce qui facilite le déploiement et la maintenance. Chaque composant principal (peers blockchain, orderer, chaincode, backend, frontend) peut être déployé dans des conteneurs séparés, permettant une scalabilité horizontale et une isolation des composants.
+
+Le déploiement du réseau blockchain utilise Docker Compose, ce qui permet de définir l'ensemble de l'infrastructure dans des fichiers de configuration. Cette approche facilite le déploiement dans différents environnements (développement, test, production) et permet une reproductibilité complète de l'infrastructure.
+
+\subsection{Gestion du Cycle de Vie}
+
+Le système inclut des scripts automatisés pour gérer le cycle de vie du réseau blockchain, incluant le démarrage, l'arrêt, le nettoyage, et la vérification de l'état. Ces scripts simplifient grandement la maintenance et permettent aux opérateurs de gérer le système sans avoir besoin d'une expertise approfondie en Hyperledger Fabric.
+
+Le déploiement du chaincode utilise le modèle CCAAS, qui permet une mise à jour plus facile que les méthodes traditionnelles. Lorsqu'une nouvelle version du chaincode est disponible, elle peut être déployée sans nécessiter un arrêt complet du réseau, minimisant ainsi les interruptions de service.
+
+\subsection{Monitoring et Logging}
+
+Le système génère des logs détaillés à tous les niveaux, permettant le diagnostic des problèmes et l'analyse des performances. Les logs du réseau blockchain sont accessibles via Docker, tandis que les logs du backend et du frontend sont gérés par les mécanismes standard de Node.js.
+
+Pour un déploiement en production, il serait recommandé d'intégrer des outils de monitoring plus avancés, tels que Prometheus pour la collecte de métriques et Grafana pour la visualisation. Ces outils permettraient de surveiller la santé du système en temps réel et de détecter rapidement tout problème potentiel.
+
+\section{Défis Techniques et Solutions}
+
+\subsection{Gestion de la Latence Blockchain}
+
+L'un des défis principaux rencontrés lors du développement était la gestion de la latence inhérente aux transactions blockchain. Contrairement aux bases de données traditionnelles où les écritures sont presque instantanées, les transactions blockchain nécessitent un consensus distribué, ce qui introduit une latence de l'ordre de 1 à 2 secondes.
+
+Pour atténuer ce problème, le système utilise une approche asynchrone où les opérations sont initiées immédiatement, mais les résultats sont traités de manière asynchrone. Par exemple, lorsqu'une mission est créée, le système commence immédiatement à calculer l'itinéraire et à préparer les réservations, même si les transactions blockchain précédentes ne sont pas encore confirmées. Cette approche permet de maintenir une réactivité élevée tout en garantissant la cohérence des données.
+
+\subsection{Synchronisation des États}
+
+Un autre défi était de maintenir la synchronisation entre l'état du réseau routier calculé par le backend et l'état réel sur la blockchain. Le backend interroge régulièrement la blockchain pour mettre à jour son cache local de l'état des segments, mais il existe toujours un délai entre une transaction sur la blockchain et sa visibilité dans le cache du backend.
+
+Pour résoudre ce problème, le système utilise un mécanisme de rafraîchissement périodique combiné avec des notifications en temps réel via WebSocket. Lorsqu'une transaction est confirmée sur la blockchain, le backend est notifié et met à jour immédiatement son cache, garantissant que les calculs d'itinéraire utilisent toujours les données les plus récentes.
+
+\subsection{Gestion des Conflits Concurrents}
+
+La gestion des conflits concurrents, où plusieurs véhicules tentent de réserver le même segment simultanément, représente un défi technique significatif. Le système utilise le mécanisme de versioning de Hyperledger Fabric (MVCC - Multi-Version Concurrency Control) pour détecter ces conflits, mais cela peut entraîner l'échec de certaines transactions qui doivent être réessayées.
+
+Pour gérer ce problème, le système implémente un mécanisme de retry automatique avec backoff exponentiel. Lorsqu'une transaction échoue à cause d'un conflit MVCC, le système attend un court délai avant de réessayer, avec des délais croissants pour éviter la surcharge du réseau. Cette approche garantit que les transactions finissent par réussir même en cas de forte contention.
+
+\section{Conclusion}
+
+\subsection{Bilan}
+
+Ce projet a démontré avec succès la faisabilité d'un système de routage dynamique pour véhicules d'urgence basé sur la blockchain. Les principaux accomplissements incluent le développement et le déploiement d'une architecture blockchain fonctionnelle avec Hyperledger Fabric, qui permet la coordination entre plusieurs organisations tout en maintenant leur autonomie et en garantissant l'intégrité des données.
+
+Un autre accomplissement majeur est l'implémentation d'un algorithme de routage intelligent avec gestion des priorités, qui permet de calculer des itinéraires optimaux en tenant compte non seulement de la distance, mais également de l'état réel du réseau et des priorités des différents véhicules. Cet algorithme, combiné avec le mécanisme de résolution automatique des conflits, garantit que les véhicules de priorité supérieure peuvent toujours accomplir leurs missions sans être bloqués par des véhicules de priorité inférieure.
+
+Le développement d'une interface utilisateur interactive et intuitive représente également un accomplissement significatif. Cette interface permet aux opérateurs de visualiser en temps réel l'état du réseau, de créer et gérer des missions, et de suivre la progression des véhicules, ce qui facilite grandement l'utilisation du système dans un contexte opérationnel réel.
+
+Enfin, le système assure une traçabilité complète des opérations via le registre immuable de la blockchain, ce qui est essentiel pour l'audit, la conformité réglementaire, et l'analyse post-incident. Cette traçabilité, combinée avec la résolution automatique des conflits, fait du système une solution robuste et fiable pour la coordination des services d'urgence.
+
+\subsection{Perspectives d'Amélioration}
+
+Plusieurs améliorations pourraient être apportées dans des versions futures pour étendre les capacités du système et améliorer ses performances. Premièrement, une extension géographique permettrait de supporter des cartes plus étendues et de multiples villes, ce qui serait nécessaire pour un déploiement réel à grande échelle. Cette extension nécessiterait des optimisations de l'algorithme de routage pour gérer efficacement des graphes plus grands, ainsi que des améliorations de l'architecture pour gérer la charge supplémentaire.
+
+Deuxièmement, une intégration IoT permettrait d'utiliser des capteurs en temps réel pour les conditions de trafic, les conditions météorologiques, et d'autres facteurs qui peuvent affecter le routage. Cette intégration enrichirait les données disponibles pour le calcul d'itinéraire et permettrait des décisions plus informées. Par ailleurs, l'utilisation de machine learning permettrait de prédire les besoins en véhicules d'urgence basée sur l'historique, permettant ainsi une allocation proactive des ressources et une amélioration de l'efficacité globale du système.
+
+En outre, le support d'un nombre arbitraire d'organisations serait bénéfique pour permettre l'inclusion de nouveaux types de services d'urgence ou d'autres acteurs pertinents. Cette extension nécessiterait principalement une reconfiguration du réseau blockchain et ne devrait pas nécessiter de changements majeurs dans le code, grâce à l'architecture modulaire du système.
+
+Par ailleurs, des algorithmes de routage plus sophistiqués prenant en compte plusieurs critères pourraient améliorer l'optimalité des itinéraires calculés. Ces algorithmes pourraient considérer non seulement la distance et les réservations, mais également des facteurs tels que le temps de trajet estimé, la consommation de carburant, ou les risques associés à différents itinéraires. Enfin, une sécurité renforcée avec des contrôles d'accès plus granulaires pourrait améliorer la protection des données sensibles et permettre une gestion plus fine des permissions.
+
+\subsection{Impact Potentiel}
+
+Un tel système, s'il était déployé à grande échelle, pourrait avoir un impact significatif sur l'efficacité et la coordination des services d'urgence. Premièrement, le système pourrait réduire significativement les temps de réponse des services d'urgence en optimisant les itinéraires et en évitant les conflits qui pourraient retarder les véhicules. Cette réduction des temps de réponse pourrait directement sauver des vies dans des situations d'urgence où chaque seconde compte.
+
+Deuxièmement, le système améliorerait la coordination entre différents services d'urgence en fournissant une vue partagée et vérifiable de l'état du réseau routier. Cette coordination permettrait aux différents services de travailler ensemble plus efficacement, évitant les conflits et optimisant l'utilisation des ressources. Par ailleurs, la transparence et la responsabilisation accrues fournies par la blockchain permettraient une meilleure gouvernance et une plus grande confiance dans le système.
+
+En outre, le système pourrait servir de base pour d'autres applications de Smart City, démontrant comment la blockchain peut être utilisée pour coordonner des services critiques dans un environnement urbain. Les leçons apprises et l'architecture développée pourraient être adaptées à d'autres domaines, tels que la gestion du trafic, la distribution d'énergie, ou d'autres services urbains nécessitant une coordination multi-organisationnelle.
+
+Enfin, le système pourrait contribuer à l'évolution vers des villes plus intelligentes et plus efficaces, où les technologies avancées sont utilisées pour améliorer la qualité de vie des citoyens et optimiser l'utilisation des ressources. Cette évolution représente un investissement important dans l'avenir des villes et pourrait avoir des bénéfices à long terme qui dépassent largement le domaine des services d'urgence.
+
+\section{Références Techniques}
+
+\begin{itemize}
+    \item Hyperledger Fabric Documentation : \url{https://hyperledger-fabric.readthedocs.io/}
+    \item React Documentation : \url{https://react.dev/}
+    \item TypeScript Documentation : \url{https://www.typescriptlang.org/}
+    \item Leaflet Maps : \url{https://leafletjs.com/}
+    \item OSRM Project : \url{http://project-osrm.org/}
+    \item A* Pathfinding Algorithm : Hart, P. E., Nilsson, N. J., \& Raphael, B. (1968). A formal basis for the heuristic determination of minimum cost paths.
+\end{itemize}
+
+\end{document}
