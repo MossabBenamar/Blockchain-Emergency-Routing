@@ -9,7 +9,6 @@ jspm_packages/
 .pnp.cjs
 .pnpm-debug.log
 
-VIDEO_DEMO_SCRIPT.md
 
 # Build outputs and runtime-generated files
 dist/
