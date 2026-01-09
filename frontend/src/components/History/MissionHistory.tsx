@@ -127,20 +127,28 @@ export function MissionHistory({ currentOrg, onMissionSelect }: MissionHistoryPr
     }
   };
 
-  // Format timestamp
+  // Format timestamp (blockchain uses Unix seconds, JS needs milliseconds)
   const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
+    // Check if timestamp is in seconds (< year 2100 in ms would be < 4102444800000)
+    // Unix seconds are typically 10 digits, milliseconds are 13 digits
+    const isSeconds = timestamp < 10000000000;
+    const ms = isSeconds ? timestamp * 1000 : timestamp;
+    const date = new Date(ms);
     return date.toLocaleString();
   };
 
-  // Format duration
-  const formatDuration = (ms: number | null | undefined) => {
-    if (!ms) return '-';
-    const seconds = Math.floor(ms / 1000);
+  // Format duration (backend sends duration in seconds)
+  const formatDuration = (duration: number | null | undefined) => {
+    if (!duration && duration !== 0) return '-';
+    // Duration from backend is in seconds (completedAt - activatedAt)
+    const seconds = Math.floor(duration);
     if (seconds < 60) return `${seconds}s`;
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}m ${remainingSeconds}s`;
+    if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
   };
 
   // Get status badge class
@@ -172,7 +180,7 @@ export function MissionHistory({ currentOrg, onMissionSelect }: MissionHistoryPr
     <div className="mission-history">
       <div className="history-header">
         <h2>📜 History</h2>
-        <button 
+        <button
           className="refresh-btn"
           onClick={() => {
             if (activeTab === 'missions') fetchMissions();
@@ -379,8 +387,8 @@ export function MissionHistory({ currentOrg, onMissionSelect }: MissionHistoryPr
                   <span className="perf-label">Success Rate</span>
                   <span className="perf-value">
                     {stats.totalMissionsOnChain > 0
-                      ? Math.round((stats.missionsByStatus.completed / 
-                          (stats.missionsByStatus.completed + stats.missionsByStatus.aborted || 1)) * 100)
+                      ? Math.round((stats.missionsByStatus.completed /
+                        (stats.missionsByStatus.completed + stats.missionsByStatus.aborted || 1)) * 100)
                       : 0}%
                   </span>
                 </div>
