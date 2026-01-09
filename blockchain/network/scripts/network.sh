@@ -88,6 +88,28 @@ print_info "Generating Channel Transaction (Profile: EmergencyChannel)..."
 configtxgen -profile EmergencyChannel -outputCreateChannelTx ../channel-artifacts/emergency.tx -channelID emergency-channel
 
 # ====================================================
+# 3.5. CREATE DOCKER NETWORK
+# ====================================================
+print_info "Creating Docker network..."
+
+# Stop and remove containers using the network first (if any)
+docker network inspect emergency-routing_fabric &>/dev/null && \
+  $DOCKER_COMPOSE -f ../docker/docker-compose-net.yaml down 2>/dev/null || true
+
+# Remove network if it exists
+docker network rm emergency-routing_fabric 2>/dev/null || true
+
+# Wait a moment for cleanup
+sleep 2
+
+# Create network with explicit configuration
+docker network create \
+  --driver bridge \
+  --subnet=172.28.0.0/16 \
+  emergency-routing_fabric || \
+  print_info "Network already exists, continuing..."
+
+# ====================================================
 # 4. START NETWORK
 # ====================================================
 print_info "Starting containers..."
